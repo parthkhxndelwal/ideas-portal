@@ -2,12 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { validateEmailWithTLD } from "@/lib/utils"
 
 export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(true)
@@ -20,6 +21,8 @@ export function LoginForm() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [emailError, setEmailError] = useState("")
+  const emailValidationTimeout = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   // Handle mode switching with robust scale animation
@@ -32,6 +35,7 @@ export function LoginForm() {
     // Clear form data and error immediately
     setFormData({ email: "", password: "", rollNumber: "" })
     setError("")
+    setEmailError("")
 
     // Start showing the incoming form after current form completely disappears
     setTimeout(() => {
@@ -46,10 +50,50 @@ export function LoginForm() {
     }, 1050) // 600ms (disappear) + 450ms (appear) = 1050ms total
   }
 
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value
+    setFormData({ ...formData, email: newEmail })
+    
+    // Clear any existing timeout
+    if (emailValidationTimeout.current) {
+      clearTimeout(emailValidationTimeout.current)
+    }
+    
+    // Clear error immediately when user types
+    setEmailError("")
+    
+    // Validate email after 500ms of no typing
+    if (newEmail) {
+      emailValidationTimeout.current = setTimeout(() => {
+        const validation = validateEmailWithTLD(newEmail)
+        if (!validation.isValid && validation.error) {
+          setEmailError(validation.error)
+        }
+      }, 500)
+    }
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (emailValidationTimeout.current) {
+        clearTimeout(emailValidationTimeout.current)
+      }
+    }
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
+    
+    // Validate email before submission
+    const emailValidation = validateEmailWithTLD(formData.email)
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error || "Invalid email")
+      setLoading(false)
+      return
+    }
 
     console.log("Form submission started, isSignUp:", isSignUp)
 
@@ -139,10 +183,15 @@ export function LoginForm() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12"
+                  onChange={handleEmailChange}
+                  className={`bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12 ${
+                    emailError ? "border-red-500 focus:border-red-500" : ""
+                  }`}
                   required
                 />
+                {emailError && (
+                  <p className="text-red-400 text-xs mt-1">{emailError}</p>
+                )}
               </div>
 
               <div>

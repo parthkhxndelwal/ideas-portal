@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { Database } from "@/lib/database"
 import { hashPassword, generateOTP } from "@/lib/auth"
 import { sendOTPEmail } from "@/lib/email"
+import { validateEmailWithTLD } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +14,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
+    const emailValidation = validateEmailWithTLD(email)
+    if (!emailValidation.isValid) {
+      return NextResponse.json({ error: emailValidation.error || "Invalid email format" }, { status: 400 })
     }
 
     if (password.length < 6) {

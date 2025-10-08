@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { validateEmailWithTLD } from "@/lib/utils"
 
 // Material Design Circular Loader Component
 function CircularLoader() {
@@ -25,6 +26,8 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [emailError, setEmailError] = useState("")
+  const emailValidationTimeout = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -42,13 +45,54 @@ export function LoginForm() {
     setFormData({ email: "", password: "", rollNumber: "" })
     setError("")
     setSuccess("")
+    setEmailError("")
   }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value
+    setFormData({ ...formData, email: newEmail })
+    
+    // Clear any existing timeout
+    if (emailValidationTimeout.current) {
+      clearTimeout(emailValidationTimeout.current)
+    }
+    
+    // Clear error immediately when user types
+    setEmailError("")
+    
+    // Validate email after 500ms of no typing
+    if (newEmail) {
+      emailValidationTimeout.current = setTimeout(() => {
+        const validation = validateEmailWithTLD(newEmail)
+        if (!validation.isValid && validation.error) {
+          setEmailError(validation.error)
+        }
+      }, 500)
+    }
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (emailValidationTimeout.current) {
+        clearTimeout(emailValidationTimeout.current)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setSuccess("")
+
+    // Validate email before submission
+    const emailValidation = validateEmailWithTLD(formData.email)
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error || "Invalid email")
+      setLoading(false)
+      return
+    }
 
     try {
       if (isSignUp) {
@@ -123,12 +167,15 @@ export function LoginForm() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12 transition-all duration-200"
+                onChange={handleEmailChange}
+                className={`bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12 transition-all duration-200 ${
+                  emailError ? "border-red-500 focus:border-red-500" : ""
+                }`}
                 required
               />
+              {emailError && (
+                <p className="text-red-400 text-xs mt-1">{emailError}</p>
+              )}
             </div>
 
             <div>
