@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
       } else {
         setError(data.error || "Verification failed")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     } finally {
       setLoading(false)
@@ -82,7 +82,7 @@ export default function VerifyEmailPage() {
       } else {
         setError(data.error || "Failed to resend OTP")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     } finally {
       setResendLoading(false)

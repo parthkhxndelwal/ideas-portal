@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { Database } from "./database"
+import { JWTPayload, verifyJWT } from "./jwt-utils"
 
 export async function hashPassword(password: string) {
   return await bcrypt.hash(password, 12)
@@ -14,15 +15,7 @@ export function generateJWT(userId: string, email: string, role: string) {
   return jwt.sign({ userId, email, role }, process.env.NEXTAUTH_SECRET!, { expiresIn: "7d" })
 }
 
-export function verifyJWT(token: string) {
-  try {
-    return jwt.verify(token, process.env.NEXTAUTH_SECRET!) as any
-  } catch {
-    return null
-  }
-}
-
-export const verifyToken = verifyJWT
+export { verifyJWT, verifyToken } from "./jwt-utils"
 
 export function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString()

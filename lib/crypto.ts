@@ -4,7 +4,7 @@ import { promisify } from 'util'
 const scryptAsync = promisify(scrypt)
 
 // Use a strong encryption key - should be stored in environment variable
-const ENCRYPTION_KEY = process.env.QR_ENCRYPTION_KEY || 'your-32-character-secret-key-here'
+const ENCRYPTION_KEY = process.env.QR_ENCRYPTION_KEY || 'EncryptedIDEAS'
 const ALGORITHM = 'aes-256-gcm'
 
 /**
@@ -95,6 +95,8 @@ export async function encryptVolunteerQRData(rollNumber: string): Promise<string
 export async function decryptVolunteerQRData(encryptedData: string): Promise<{
   originalData: string
   rollNumber: string | null
+  transactionId: string | null
+  qrType: "volunteer" | "participant" | "unknown"
   isValid: boolean
 }> {
   try {
@@ -106,19 +108,49 @@ export async function decryptVolunteerQRData(encryptedData: string): Promise<{
       return {
         originalData: decrypted,
         rollNumber: rollNumber,
+        transactionId: null,
+        qrType: "volunteer",
         isValid: true
+      }
+    } else if (decrypted.startsWith('participant_ideas3.0_')) {
+      const remainder = decrypted.replace('participant_ideas3.0_', '')
+      const separatorIndex = remainder.indexOf('_')
+
+      if (separatorIndex === -1) {
+        return {
+          originalData: decrypted,
+          rollNumber: null,
+          transactionId: null,
+          qrType: "unknown",
+          isValid: false
+        }
+      }
+
+      const rollNumber = remainder.slice(0, separatorIndex)
+      const transactionId = remainder.slice(separatorIndex + 1)
+
+      return {
+        originalData: decrypted,
+        rollNumber,
+        transactionId,
+        qrType: "participant",
+        isValid: Boolean(rollNumber && transactionId)
       }
     } else {
       return {
         originalData: decrypted,
         rollNumber: null,
+        transactionId: null,
+        qrType: "unknown",
         isValid: false
       }
     }
-  } catch (error) {
+  } catch (_error) {
     return {
       originalData: '',
       rollNumber: null,
+      transactionId: null,
+      qrType: "unknown",
       isValid: false
     }
   }

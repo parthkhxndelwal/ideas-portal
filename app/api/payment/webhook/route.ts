@@ -3,6 +3,23 @@ import { Database } from "@/lib/database"
 import { verifyWebhookSignature } from "@/lib/razorpay"
 import { sendPaymentConfirmationEmail } from "@/lib/email"
 
+interface RazorpayPayment {
+  id: string
+  order_id: string
+  amount: number
+  currency: string
+  status: string
+  method: string
+  error_code?: string
+  error_description?: string
+}
+
+interface RazorpayOrder {
+  id: string
+  amount: number
+  currency: string
+}
+
 /**
  * Razorpay Webhook Handler
  * 
@@ -72,7 +89,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payment: any) {
+async function handlePaymentCaptured(payment: RazorpayPayment) {
   try {
     console.log("Processing payment.captured for:", payment.id)
     
@@ -115,7 +132,7 @@ async function handlePaymentCaptured(payment: any) {
   }
 }
 
-async function handlePaymentFailed(payment: any) {
+async function handlePaymentFailed(payment: RazorpayPayment) {
   try {
     console.log("Processing payment.failed for:", payment.id)
     
@@ -139,7 +156,7 @@ async function handlePaymentFailed(payment: any) {
   }
 }
 
-async function handleOrderPaid(order: any, payment: any) {
+async function handleOrderPaid(order: RazorpayOrder, payment: RazorpayPayment) {
   try {
     console.log("Processing order.paid for:", order.id)
     

@@ -27,30 +27,49 @@ import {
 import {
   CheckCircle,
   Clock,
-  Download,
   CreditCard,
   FileText,
   LogOut,
   User,
-  Calendar,
-  Award,
   TrendingUp,
   Sparkles,
   Sun,
   Moon,
-  Eye,
-  ChevronDown,
-  ArrowLeft,
-  X,
-  ShieldCheck,
   Loader2
 } from "lucide-react"
 import Image from "next/image"
 import { LoadingTransition } from "@/components/ui/loading-transition"
 
+interface RazorpayResponse {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
+interface RazorpayOptions {
+  key: string
+  amount: number
+  currency: string
+  name: string
+  description: string
+  order_id: string
+  handler: (response: RazorpayResponse) => void
+  prefill: {
+    name: string
+    email: string
+  }
+  theme: {
+    color: string
+  }
+}
+
+interface RazorpayInstance {
+  open(): void
+}
+
 declare global {
   interface Window {
-    Razorpay: any
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
   }
 }
 
@@ -77,7 +96,6 @@ function useTheme() {
   const toggleTheme = async () => {
     if (!toggleRef.current || isTransitioning) return
 
-    const currentTheme = theme
     const nextTheme = theme === "dark" ? "light" : "dark"
     setIsTransitioning(true)
 
@@ -158,17 +176,8 @@ interface User {
   transactionId?: string
 }
 
-interface PendingTransaction {
-  id: string
-  transactionId: string
-  amount: number
-  status: string
-  createdAt: string
-}
-
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
-  const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [animating, setAnimating] = useState(false)
   const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
@@ -179,7 +188,7 @@ export default function DashboardPage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [allowDrawerClose, setAllowDrawerClose] = useState(true)
   const router = useRouter()
-  const { theme, toggleTheme, toggleRef, isTransitioning, setTheme } = useTheme()
+  const { theme, toggleTheme: _toggleTheme, toggleRef: _toggleRef, isTransitioning: _isTransitioning, setTheme } = useTheme()
 
   const simpleToggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark"
@@ -190,16 +199,7 @@ export default function DashboardPage() {
     setTheme(nextTheme)
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    if (!token) {
-      router.push("/")
-      return
-    }
-    fetchUserData(token)
-  }, [router])
-
-  const fetchUserData = async (token: string) => {
+  const fetchUserData = useCallback(async (token: string) => {
     try {
       // First check if user needs to confirm details
       const statusResponse = await fetch("/api/user/confirmation-status", {
@@ -231,7 +231,6 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setUser(data.user)
-        setPendingTransactions(data.pendingTransactions || [])
         setAnimating(true)
       } else {
         localStorage.removeItem("authToken")
@@ -243,7 +242,16 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+    fetchUserData(token)
+  }, [router, fetchUserData])
 
   const paymentCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -300,7 +308,7 @@ export default function DashboardPage() {
     }
   }, [allowDrawerClose])
 
-  async function verifyPayment(razorpayResponse: any, token: string) {
+  const verifyPayment = useCallback(async (razorpayResponse: RazorpayResponse, token: string) => {
     try {
       const response = await fetch("/api/payment/verify", {
         method: "POST",
@@ -340,7 +348,7 @@ export default function DashboardPage() {
       setPaymentError("Payment verification failed. Please contact support.")
       setPaymentLoading(false)
     }
-  }
+  }, [])
 
   const handleInitiatePayment = useCallback(async () => {
     if (!razorpayLoaded) {
@@ -384,7 +392,7 @@ export default function DashboardPage() {
         name: "IDEAS 3.0",
         description: "Event Registration Fee",
         image: "/ideas-black.png",
-        handler: async (razorpayResponse: any) => {
+        handler: async (razorpayResponse: RazorpayResponse) => {
           await verifyPayment(razorpayResponse, token)
           setAllowDrawerClose(true) // Allow drawer to be closed after successful payment
         },
@@ -478,8 +486,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     return () => {
-      if (paymentCloseTimer.current) {
-        clearTimeout(paymentCloseTimer.current)
+      const timer = paymentCloseTimer.current
+      if (timer) {
+        clearTimeout(timer)
       }
     }
   }, [])
@@ -509,7 +518,7 @@ export default function DashboardPage() {
         {!loading && (
           <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
             <div className="text-center space-y-3">
-              <h2 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200">We couldn't load your dashboard</h2>
+              <h2 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200">We couldn&apos;t load your dashboard</h2>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">Please try refreshing the page or sign in again.</p>
               <Button onClick={() => router.push("/")} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Return to Login
@@ -861,7 +870,7 @@ export default function DashboardPage() {
                     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/40 p-4 space-y-2">
                       <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Need Help?</h4>
                       <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
-                        If your payment doesn't reflect within a few minutes, keep your payment reference handy and contact support.
+                        If your payment doesn&apos;t reflect within a few minutes, keep your payment reference handy and contact support.
                       </p>
                     </div>
 

@@ -19,11 +19,11 @@ export default function RollNumberErrorPage() {
           <div className="rounded-2xl bg-neutral-900/70 border border-neutral-800 p-8 shadow-2xl">
             <div className="text-center space-y-4">
               <p className="text-amber-300 font-semibold text-lg">
-                The roll number entered <strong>doesn't exist</strong> or has incorrect details.
+                The roll number entered <strong>doesn&apos;t exist</strong> or has incorrect details.
               </p>
 
               <p className="text-neutral-300">
-                Don't worry — you can still register by proving that your details are legitimate.
+                Don&apos;t worry — you can still register by proving that your details are legitimate.
               </p>
 
               <div className="text-left space-y-2 max-w-2xl mx-auto mt-4">

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import Image from "next/image"
-import { Mail, ExternalLink } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { validateEmailWithTLD } from "@/lib/utils"
 
 export default function ForgotPasswordPage() {
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
   const [emailError, setEmailError] = useState("")
   const [formSubmitted, setFormSubmitted] = useState(false)
   const emailValidationTimeout = useRef<NodeJS.Timeout | null>(null)
-  const router = useRouter()
+  const _router = useRouter()
 
   const getEmailClientInfo = (email: string) => {
     if (!email || !email.includes("@")) return null
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
       } else {
         setError(data.error || "Failed to send reset email")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     } finally {
       setLoading(false)

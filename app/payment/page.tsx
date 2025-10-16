@@ -8,9 +8,40 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
+interface RazorpayResponse {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
+interface RazorpayOptions {
+  key: string
+  amount: number
+  currency: string
+  name: string
+  description: string
+  order_id: string
+  image?: string
+  handler: (response: RazorpayResponse) => void
+  prefill: {
+    name?: string
+    email: string
+  }
+  theme: {
+    color: string
+  }
+  modal?: {
+    ondismiss?: () => void
+  }
+}
+
+interface RazorpayInstance {
+  open(): void
+}
+
 declare global {
   interface Window {
-    Razorpay: any
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
   }
 }
 
@@ -106,7 +137,7 @@ export default function PaymentPage() {
         name: "IDEAS 3.0",
         description: "Event Registration Fee",
         image: "/ideas-black.png",
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           await verifyPayment(response, token!)
         },
         prefill: {
@@ -132,7 +163,7 @@ export default function PaymentPage() {
     }
   }
 
-  const verifyPayment = async (razorpayResponse: any, token: string) => {
+  const verifyPayment = async (razorpayResponse: RazorpayResponse, token: string) => {
     try {
       const response = await fetch("/api/payment/verify", {
         method: "POST",
@@ -300,7 +331,7 @@ export default function PaymentPage() {
                     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/40 p-4 sm:p-5 space-y-3">
                       <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Need Help?</h4>
                       <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
-                        If your payment doesn't reflect within a few minutes, keep your payment reference handy and contact the IDEAS support team.
+                        If your payment doesn&apos;t reflect within a few minutes, keep your payment reference handy and contact the IDEAS support team.
                       </p>
                       <Button
                         variant="outline"

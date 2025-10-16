@@ -30,33 +30,64 @@ export async function POST(request: NextRequest) {
     // Decrypt and validate the QR data
     const decryptedResult = await decryptVolunteerQRData(qrData)
 
-    if (!decryptedResult.isValid) {
+    if (!decryptedResult.isValid || !decryptedResult.rollNumber) {
       return NextResponse.json({ 
         error: "Invalid QR code", 
         valid: false 
       }, { status: 400 })
     }
 
-    // Check if the roll number exists in the database
-    const rollNumberData = await Database.findRollNumberData(decryptedResult.rollNumber!)
-    if (!rollNumberData) {
-      return NextResponse.json({ 
-        error: "Roll number not found in database", 
-        valid: false,
-        rollNumber: decryptedResult.rollNumber
-      }, { status: 404 })
+    const { rollNumber, qrType, transactionId } = decryptedResult
+
+    let volunteerInfo: {
+      name: string
+      rollNumber: string
+      courseAndSemester: string
+      year: string
+    } | null = null
+
+    if (qrType === "participant") {
+      const user = await Database.findUserByRollNumber(rollNumber)
+      if (!user) {
+        return NextResponse.json({
+          error: "Participant not found",
+          valid: false,
+          rollNumber,
+        }, { status: 404 })
+      }
+
+      volunteerInfo = {
+        name: user.name ?? "Not provided",
+        rollNumber: user.rollNumber ?? rollNumber,
+        courseAndSemester: user.courseAndSemester ?? "Not provided",
+        year: user.year ?? "Not provided",
+      }
+    } else {
+      // Default to volunteer data lookup
+      const rollNumberData = await Database.findRollNumberData(rollNumber)
+      if (!rollNumberData) {
+        return NextResponse.json({ 
+          error: "Roll number not found in database", 
+          valid: false,
+          rollNumber,
+        }, { status: 404 })
+      }
+
+      volunteerInfo = {
+        name: rollNumberData.name,
+        rollNumber: rollNumberData.rollnumber,
+        courseAndSemester: rollNumberData.courseAndSemester,
+        year: rollNumberData.year,
+      }
     }
 
     return NextResponse.json({
       valid: true,
-      rollNumber: decryptedResult.rollNumber,
-      volunteerInfo: {
-        name: rollNumberData.name,
-        rollNumber: rollNumberData.rollnumber,
-        courseAndSemester: rollNumberData.courseAndSemester,
-        year: rollNumberData.year
-      },
-      message: "Valid volunteer QR code"
+      rollNumber,
+      qrType,
+      transactionId,
+      volunteerInfo,
+      message: "Valid QR code"
     })
 
   } catch (error) {

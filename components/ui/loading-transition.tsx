@@ -65,7 +65,7 @@ export function LoadingTransition({ isLoading, children, className = "" }: Loadi
       } else {
         // Normal mode: Original behavior
         const elapsedTime = Date.now() - loadingStartTime
-        const minLoadingTime = 2000 // 2 seconds minimum
+        const minLoadingTime = 100 // 2 seconds minimum
         const remainingTime = Math.max(0, minLoadingTime - elapsedTime)
 
         const timer = setTimeout(() => {
@@ -87,7 +87,7 @@ export function LoadingTransition({ isLoading, children, className = "" }: Loadi
   const handleScreenTap = () => {
     if (Test && waitingForTap) {
       setAnimateOut(true)
-      const animationTimer = setTimeout(() => {
+      const _animationTimer = setTimeout(() => {
         setShowLoading(false)
         setLoadingStartTime(null)
         setWaitingForTap(false)

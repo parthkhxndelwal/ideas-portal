@@ -3,7 +3,7 @@ import { Database } from "@/lib/database"
 import { verifyJWT } from "@/lib/auth"
 
 // GET: Fetch the current payment amount from event config
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const config = await Database.getEventConfig()
     return NextResponse.json({ 

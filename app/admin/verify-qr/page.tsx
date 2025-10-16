@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,12 +9,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ScanLine, CheckCircle, XCircle } from "lucide-react"
 import AdminLayout from "@/components/admin/AdminLayout"
 
+interface VolunteerInfo {
+  name: string
+  rollNumber: string
+  courseAndSemester: string
+  year: string
+}
+
+interface VerificationResult {
+  valid: boolean
+  volunteerInfo?: VolunteerInfo
+  qrType?: "volunteer" | "participant" | "unknown"
+  transactionId?: string | null
+}
+
 export default function VerifyQRPage() {
   const [qrData, setQrData] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [result, setResult] = useState<any>(null)
-  const router = useRouter()
+  const [result, setResult] = useState<VerificationResult | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +54,7 @@ export default function VerifyQRPage() {
         setError(data.error || "QR verification failed")
         setResult({ valid: false })
       }
-    } catch (error) {
+    } catch (_error) {
       setError("Network error occurred")
       setResult({ valid: false })
     } finally {
@@ -97,13 +109,18 @@ export default function VerifyQRPage() {
                 <AlertDescription className={`text-${result.valid ? 'green' : 'red'}-800 dark:text-${result.valid ? 'green' : 'red'}-400`}>
                   {result.valid ? (
                     <div>
-                      <p className="font-semibold">✅ Valid Volunteer QR Code</p>
+                      <p className="font-semibold">
+                        ✅ Valid {result.qrType === "participant" ? "Participant" : "Volunteer"} QR Code
+                      </p>
                       {result.volunteerInfo && (
                         <div className="mt-2 space-y-1">
                           <p><strong>Name:</strong> {result.volunteerInfo.name}</p>
                           <p><strong>Roll Number:</strong> {result.volunteerInfo.rollNumber}</p>
                           <p><strong>Course:</strong> {result.volunteerInfo.courseAndSemester}</p>
                           <p><strong>Year:</strong> {result.volunteerInfo.year}</p>
+                          {result.qrType === "participant" && result.transactionId && (
+                            <p><strong>Transaction ID:</strong> {result.transactionId}</p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -129,9 +146,9 @@ export default function VerifyQRPage() {
               <strong>Instructions:</strong>
             </p>
             <ul className="text-sm text-neutral-600 dark:text-neutral-400 space-y-1">
-              <li>• Use any QR scanner app to scan the volunteer's QR code</li>
+              <li>• Use any QR scanner app to scan the volunteer&apos;s QR code</li>
               <li>• Copy the scanned data and paste it in the field above</li>
-              <li>• Click "Verify QR Code" to validate the volunteer</li>
+              <li>• Click &quot;Verify QR Code&quot; to validate the volunteer</li>
               <li>• Only valid encrypted QR codes will show volunteer details</li>
             </ul>
           </div>

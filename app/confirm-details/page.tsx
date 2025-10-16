@@ -10,15 +10,12 @@ import { LoadingTransition } from "@/components/ui/loading-transition"
 import { ConfirmDetailsModal } from "@/components/confirm-details-modal"
 
 interface UserDetails {
+  _id: string
   name: string
+  email: string
   rollNumber: string
   courseAndSemester: string
   year: string
-}
-
-interface UserInfo {
-  email: string
-  rollNumber?: string
 }
 
 export default function ConfirmDetailsPage() {
@@ -89,7 +86,7 @@ export default function ConfirmDetailsPage() {
       } else {
         setUserInfo({ email })
       }
-    } catch (error) {
+    } catch (_error) {
       setUserInfo({ email })
     }
   }
@@ -115,7 +112,7 @@ export default function ConfirmDetailsPage() {
         setError("")
         // Note: editableRollNumber is set in fetchUserInfo
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
       setRollNumberNotFound(false)
     } finally {
@@ -151,7 +148,7 @@ export default function ConfirmDetailsPage() {
       } else {
         setError(data.error || "Registration failed")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     }
   }
@@ -200,7 +197,7 @@ export default function ConfirmDetailsPage() {
       } else {
         setError(data.error || "Update failed")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     }
   }

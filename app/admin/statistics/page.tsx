@@ -22,25 +22,25 @@ export default function StatisticsPage() {
   const [downloading, setDownloading] = useState<string | null>(null)
   const router = useRouter()
 
-  const fetchStatistics = async (token: string) => {
-    try {
-      const response = await fetch("/api/admin/statistics", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+  useEffect(() => {
+    const fetchStatistics = async (token: string) => {
+      try {
+        const response = await fetch("/api/admin/statistics", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
 
-      if (response.ok) {
-        const data = await response.json()
-        setStatistics(data.statistics)
-      } else {
+        if (response.ok) {
+          const data = await response.json()
+          setStatistics(data.statistics)
+        } else {
+          router.push("/admin")
+        }
+      } catch (error) {
+        console.error("Error fetching statistics:", error)
         router.push("/admin")
       }
-    } catch (error) {
-      console.error("Error fetching statistics:", error)
-      router.push("/admin")
     }
-  }
 
-  useEffect(() => {
     const token = localStorage.getItem("authToken")
     if (token) {
       fetchStatistics(token)

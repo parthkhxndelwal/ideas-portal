@@ -16,7 +16,6 @@ import {
   DialogFooter,
   DialogDescription,
   DialogClose,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 
 interface ConfirmDetailsModalProps {
@@ -73,7 +72,7 @@ export function ConfirmDetailsModal({ email, initialRollNumber, onClose, onSucce
         // User confirmed the same roll number, but it's not in database
         router.push("/roll-number-error")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     } finally {
       setLoading(false)

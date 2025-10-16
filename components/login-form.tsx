@@ -138,7 +138,7 @@ export function LoginForm() {
           setError(data.error || "Login failed")
         }
       }
-    } catch (error) {
+    } catch (_error) {
       setError("Network error. Please check your connection and try again.")
     } finally {
       setLoading(false)

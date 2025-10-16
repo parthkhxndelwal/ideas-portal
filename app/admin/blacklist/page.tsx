@@ -111,7 +111,7 @@ export default function BlacklistManagementPage() {
           } else {
             setAddError(result.error || "Failed to add student to blacklist")
           }
-        } catch (error) {
+        } catch (_error) {
           setAddError("An error occurred while processing the request")
         }
       } else {
@@ -157,7 +157,7 @@ export default function BlacklistManagementPage() {
             } else {
               results.push({ rollNumber, success: false, message: result.error || "Failed to add" })
             }
-          } catch (error) {
+          } catch (_error) {
             results.push({ rollNumber, success: false, message: "Network error" })
           }
         }
@@ -168,7 +168,7 @@ export default function BlacklistManagementPage() {
         setRollNumbers("")
         fetchBlacklist() // Refresh the list
       }
-    } catch (error) {
+    } catch (_error) {
       setAddError("An error occurred while processing the request")
     } finally {
       setAddLoading(false)
@@ -192,7 +192,7 @@ export default function BlacklistManagementPage() {
       } else {
         setViewError(result.error || "Failed to fetch blacklist")
       }
-    } catch (error) {
+    } catch (_error) {
       setViewError("An error occurred. Please try again.")
     } finally {
       setViewLoading(false)
@@ -217,7 +217,7 @@ export default function BlacklistManagementPage() {
       } else {
         setViewError("Failed to remove from blacklist")
       }
-    } catch (error) {
+    } catch (_error) {
       setViewError("An error occurred. Please try again.")
     }
   }

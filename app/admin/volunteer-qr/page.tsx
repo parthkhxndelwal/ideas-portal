@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Send } from "lucide-react"
 import AdminLayout from "@/components/admin/AdminLayout"
 
 export default function VolunteerQRPage() {
@@ -48,7 +47,7 @@ export default function VolunteerQRPage() {
       } else {
         setError(result.error || "Failed to send QR")
       }
-    } catch (error) {
+    } catch (_error) {
       setError("An error occurred. Please try again.")
     } finally {
       setLoading(false)

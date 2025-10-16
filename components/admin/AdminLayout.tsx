@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { LoadingTransition } from "@/components/ui/loading-transition"
+import { useEffect, useLayoutEffect, useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Sun, Moon, LogOut, ArrowLeft } from "lucide-react"
 import Image from "next/image"
@@ -11,14 +11,22 @@ import Image from "next/image"
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const [isClient, setIsClient] = useState(false)
+  const [themeReady, setThemeReady] = useState(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIsClient(true)
+
+    const root = document.documentElement
     const saved = localStorage.getItem("theme") as "light" | "dark" | null
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const initial = saved || (prefersDark ? "dark" : "light")
-    setTheme(initial)
-    document.documentElement.classList.toggle("dark", initial === "dark")
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false
+    const existingDarkClass = root.classList.contains("dark")
+
+    const resolvedTheme =
+      saved || (existingDarkClass ? "dark" : prefersDark ? "dark" : "light")
+
+    setTheme(resolvedTheme)
+    root.classList.toggle("dark", resolvedTheme === "dark")
+    setThemeReady(true)
   }, [])
 
   const toggleTheme = () => {
@@ -29,7 +37,7 @@ function useTheme() {
     document.documentElement.classList.toggle("dark", next === "dark")
   }
 
-  return { theme, toggleTheme, isClient }
+  return { theme, toggleTheme, isClient, themeReady }
 }
 
 interface AdminLayoutProps {
@@ -45,11 +53,12 @@ export default function AdminLayout({
   showBackButton = false, 
   loading = false 
 }: AdminLayoutProps) {
-  const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
-  const { theme, toggleTheme, isClient } = useTheme()
+  const pathname = usePathname()
+  const { theme, toggleTheme, isClient, themeReady } = useTheme()
+  const [isReady, setIsReady] = useState(false)
 
-  // ✅ Auth check
+  // ✅ Auth check (background, no loading screen)
   useEffect(() => {
     const token = localStorage.getItem("authToken")
     if (!token) {
@@ -66,46 +75,74 @@ export default function AdminLayout({
         if (!response.ok) {
           router.push("/")
         }
-      } catch (error) {
+      } catch (_error) {
         router.push("/")
-      } finally {
-        setAuthLoading(false)
       }
     }
 
     checkAdminAccess()
   }, [router])
 
-  // Show full screen loading only during initial auth check
+  // Show loading screen only on main /admin page once theme is ready
+  useEffect(() => {
+    if (!themeReady) return
+
+    if (pathname === "/admin") {
+      setIsReady(false)
+      const timer = setTimeout(() => setIsReady(true), 300)
+      return () => clearTimeout(timer)
+    }
+
+    setIsReady(true)
+  }, [pathname, themeReady])
+
+  if (!themeReady) {
+    return <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900" />
+  }
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
+          <p className="text-neutral-600 dark:text-neutral-400">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <LoadingTransition isLoading={authLoading}>
-      <div 
-        className="min-h-screen bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: isClient ? `url('/admin-background${theme === "dark" ? "" : "-white"}.jpg')` : undefined,
-          backgroundColor: theme === "dark" ? "#1a1a1a" : "#f9fafb" // Fallback colors
-        }}
-      >
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div 
+      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: isClient ? `url('/admin-background${theme === "dark" ? "" : "-white"}.jpg')` : undefined,
+        backgroundColor: theme === "dark" ? "#1a1a1a" : "#f9fafb" // Fallback colors
+      }}
+    >
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* 🎯 Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div className="flex items-center gap-4">
             {/* Logo */}
-            <Image
-              src={isClient && theme === "dark" ? "/ideas-white.png" : "/ideas-black.png"}
-              alt="IDEAS Logo"
-              width={120}
-              height={40}
-              className="h-10 w-auto object-contain"
-            />
+            <Link href="/admin" className="cursor-pointer">
+              <Image
+                src={isClient && theme === "dark" ? "/ideas-white.png" : "/ideas-black.png"}
+                alt="IDEAS Logo"
+                width={120}
+                height={40}
+                className="h-10 w-auto object-contain"
+              />
+            </Link>
             <div className="h-8 w-px bg-neutral-300 dark:bg-neutral-600"></div>
-            <Image
-              src="/kr-logo.png"
-              alt="KR Logo"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain"
-            />
+            <Link href="/admin" className="cursor-pointer">
+              <Image
+                src="/kr-logo.png"
+                alt="KR Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
+            </Link>
             <div className="ml-2">
               <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                 Admin Dashboard
@@ -158,6 +195,5 @@ export default function AdminLayout({
         )}
       </div>
     </div>
-    </LoadingTransition>
   )
 }

@@ -1,5 +1,6 @@
 import clientPromise from "./mongodb"
-import type { User, RollNumberData, BlacklistedRollNumber, Transaction, EventConfig } from "./models"
+import { ObjectId } from "mongodb"
+import type { User, RollNumberData, BlacklistedRollNumber, Transaction } from "./models"
 
 export class Database {
   private static async getDb() {
@@ -45,7 +46,6 @@ export class Database {
   static async findUserById(id: string) {
     try {
       const db = await this.getDb()
-      const { ObjectId } = require("mongodb")
       const user = await db.collection("users").findOne({ _id: new ObjectId(id) })
       console.log("User lookup by ID result:", user ? "found" : "not found")
       return user
@@ -70,7 +70,6 @@ export class Database {
   static async updateUser(id: string, updates: Partial<User>) {
     try {
       const db = await this.getDb()
-      const { ObjectId } = require("mongodb")
       const result = await db
         .collection("users")
         .updateOne({ _id: new ObjectId(id) }, { $set: { ...updates, updatedAt: new Date() } })
@@ -98,7 +97,9 @@ export class Database {
     const db = await this.getDb()
     await db.collection("rollNumberData").deleteMany({})
     if (data.length > 0) {
-      await db.collection("rollNumberData").insertMany(data)
+      // Transform data to remove _id field and let MongoDB auto-generate it
+      const transformedData = data.map(({ _id, ...rest }) => rest)
+      await db.collection("rollNumberData").insertMany(transformedData)
     }
   }
 
@@ -285,7 +286,6 @@ export class Database {
   static async updateUserPassword(id: string, hashedPassword: string) {
     try {
       const db = await this.getDb()
-      const { ObjectId } = require("mongodb")
       const result = await db
         .collection("users")
         .updateOne({ _id: new ObjectId(id) }, { $set: { password: hashedPassword, updatedAt: new Date() } })
@@ -438,7 +438,11 @@ export class Database {
   static async getAllPaymentData() {
     try {
       const db = await this.getDb()
-      const payments = await db.collection("transactions").find({}).toArray()
+      const payments = await db.collection("transactions").find({}, {
+        projection: {
+          _id: 0, // Exclude MongoDB _id for cleaner export
+        },
+      }).toArray()
 
       console.log("Payment data retrieved for export, count:", payments.length)
       return payments
@@ -451,7 +455,7 @@ export class Database {
   static async getEventConfig() {
     try {
       const db = await this.getDb()
-      let config = await db.collection("eventConfig").findOne({})
+      const config = await db.collection("eventConfig").findOne({})
       
       if (!config) {
         // Create default config if it doesn't exist

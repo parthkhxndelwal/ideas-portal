@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7)
     const decoded = verifyToken(token)
 
-    if (!decoded || decoded.role !== "admin") {
+    if (!decoded || typeof decoded === "string" || decoded.role !== "admin") {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
@@ -29,16 +29,39 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const headers = Object.keys(payments[0]).join(",")
+    // Define fixed headers in specific order
+    const headers = [
+      "userId",
+      "amount",
+      "status",
+      "transactionId",
+      "razorpayOrderId",
+      "razorpayPaymentId",
+      "razorpaySignature",
+      "paymentMethod",
+      "paymentCaptured",
+      "errorCode",
+      "errorDescription",
+      "createdAt",
+      "updatedAt"
+    ]
+
     const csvData = payments
       .map((row) =>
-        Object.values(row)
-          .map((value) => (typeof value === "string" && value.includes(",") ? `"${value}"` : value))
+        headers
+          .map((header) => {
+            const value = row[header as keyof typeof row]
+            if (value instanceof Date) {
+              return value.toISOString()
+            }
+            const stringValue = String(value || "")
+            return stringValue.includes(",") ? `"${stringValue}"` : stringValue
+          })
           .join(","),
       )
       .join("\n")
 
-    const csv = `${headers}\n${csvData}`
+    const csv = `${headers.join(",")}\n${csvData}`
 
     return new NextResponse(csv, {
       status: 200,

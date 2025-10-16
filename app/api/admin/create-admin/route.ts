@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Database } from "@/lib/database"
 import { hashPassword } from "@/lib/auth"
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Check if admin already exists
     const existingAdmin = await Database.findUserByEmail("admin@admin.com")

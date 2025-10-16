@@ -8,7 +8,7 @@ import { verifyJWT } from "@/lib/jwt-utils"
 import Image from "next/image"
 
 export default function HomePage() {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -17,14 +17,16 @@ export default function HomePage() {
 
       if (token) {
         try {
-          // First check if it's an admin token
+          // First check if it's an admin token (synchronous check)
           const decoded = verifyJWT(token)
           if (decoded && decoded.role === "admin") {
+            // Admin users: redirect immediately without loading screen
             router.push("/admin")
             return
           }
 
-          // Verify the token and check user status for regular users
+          // For non-admin users, show loading while checking status
+          setLoading(true)
           const response = await fetch("/api/user/confirmation-status", {
             headers: { Authorization: `Bearer ${token}` },
           })
@@ -46,7 +48,7 @@ export default function HomePage() {
             localStorage.removeItem("authToken")
             localStorage.removeItem("userData")
           }
-        } catch (error) {
+        } catch (_error) {
           // Network error or invalid token
           localStorage.removeItem("authToken")
           localStorage.removeItem("userData")
@@ -58,7 +60,7 @@ export default function HomePage() {
     }
 
     checkAuthAndRedirect()
-  }, [])
+  }, [router])
 
   return (
     <LoadingTransition isLoading={loading}>

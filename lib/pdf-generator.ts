@@ -3,10 +3,16 @@ import * as QRCode from "qrcode";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { encrypt } from "./crypto";
+import type { User } from "./models";
 
-export async function generateRegistrationPDF(user: any) {
-  // Check if payment is completed before generating QR code
-  if (user.paymentStatus !== "completed") {
+interface GeneratePdfOptions {
+  skipPaymentCheck?: boolean
+}
+
+export async function generateRegistrationPDF(user: User, options: GeneratePdfOptions = {}) {
+  const { skipPaymentCheck = false } = options
+  // Check if payment is completed before generating QR code unless overridden
+  if (!skipPaymentCheck && user.paymentStatus !== "completed") {
     throw new Error("Payment not completed. QR code cannot be generated until payment is confirmed.")
   }
 
@@ -40,7 +46,8 @@ export async function generateRegistrationPDF(user: any) {
   firstPage.drawText(user.year?.toString() || "", { x: marginLeft, y: yearY, size: textSize, font: helveticaFont, color: textColor });
 
   // 7. Generate encrypted QR code
-  const qrData = `participant_ideas3.0_${user.rollNumber}_${user.transactionId}`;
+  const transactionId = user.transactionId ?? `manual-${user.rollNumber}`
+  const qrData = `participant_ideas3.0_${user.rollNumber}_${transactionId}`;
   const encryptedQrData = await encrypt(qrData);
   const qrCodeDataURL = await QRCode.toDataURL(encryptedQrData, { width: 150 });
 
