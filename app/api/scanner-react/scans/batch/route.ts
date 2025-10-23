@@ -95,14 +95,14 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Check if entry already exists in database (conflict detection)
-        const existingEntry = await Database.findEntryByRollNumberAndDate(
+        // Check for existing scan record (prevent multiple scans per QR per day)
+        const existingScanRecord = await Database.findScanRecordByRollNumberAndDate(
           entry.rollNumber,
           entryDate
         )
 
-        if (existingEntry) {
-          // Conflict: Entry already exists
+        if (existingScanRecord) {
+          // Reject: QR already scanned today
           await Database.createScanRecord({
             scanId: entry._id,
             deviceId,
@@ -113,14 +113,14 @@ export async function POST(request: NextRequest) {
             entryDate,
             entryTimestamp,
             scannedBy: entry.scannedBy,
-            status: "conflict",
-            reason: `Entry already exists for this date (scanned by: ${existingEntry.scannedBy})`,
+            status: "rejected",
+            reason: "QR already scanned today",
           })
 
           results.push({
             entryId: entry._id,
-            status: "conflict",
-            reason: `Entry already exists for this date (scanned by: ${existingEntry.scannedBy})`,
+            status: "rejected",
+            reason: "QR already scanned today",
           })
           continue
         }

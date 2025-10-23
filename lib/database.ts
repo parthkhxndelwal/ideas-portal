@@ -873,6 +873,31 @@ export class Database {
   }
 
   /**
+   * Check if any scan record exists for roll number on a specific date
+   * This prevents multiple scans of the same QR per day, regardless of outcome
+   */
+  static async findScanRecordByRollNumberAndDate(rollNumber: string, date: Date) {
+    try {
+      const db = await this.getDb()
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+      
+      const scanRecord = await db.collection("scanRecords").findOne({
+        rollNumber,
+        entryDate: { $gte: startOfDay, $lte: endOfDay }
+      })
+      
+      return scanRecord
+    } catch (error) {
+      console.error("Error finding scan record by roll number and date:", error)
+      throw new Error("Failed to find scan record")
+    }
+  }
+
+  /**
    * Get scan statistics for a device
    */
   static async getScanStatistics(deviceId?: string) {
