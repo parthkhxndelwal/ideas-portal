@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Roll number is required" }, { status: 400 })
     }
 
-    // Generate encrypted QR data
-    const encryptedQrData = await encryptVolunteerQRData(rollNumber)
+    // Generate encoded QR data
+    const encryptedQrData = encryptVolunteerQRData(rollNumber)
     const universityEmail = `${rollNumber}@krmu.edu.in`
 
     await sendVolunteerQR(universityEmail, rollNumber, encryptedQrData)

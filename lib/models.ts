@@ -71,3 +71,45 @@ export interface EventConfig {
   updatedAt: Date
   updatedBy: string
 }
+
+export interface EntryRecord {
+  _id?: string
+  rollNumber: string
+  name: string
+  qrType: "participant" | "volunteer"
+  transactionId?: string
+  entryDate: Date // Date only (without time) to track daily entries
+  entryTimestamp: Date // Full timestamp of entry
+  scannedBy: string // Admin who scanned the QR
+  createdAt: Date
+}
+
+export interface ScannerDevice {
+  _id?: string
+  deviceId: string
+  name: string
+  location: string
+  appVersion: string
+  token: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ScanRecord {
+  _id?: string
+  scanId: string // Unique identifier from client for idempotency
+  deviceId: string
+  rollNumber: string
+  name: string
+  qrType: "participant" | "volunteer"
+  transactionId?: string
+  entryDate: Date
+  entryTimestamp: Date
+  scannedBy: string
+  status: "accepted" | "conflict" | "rejected"
+  reason?: string
+  appliedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}

@@ -135,7 +135,7 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 	}
 
 	const rawQrData = `participant_ideas3.0_${rollNumber}_${transactionId}`
-	const encryptedQrData = await encrypt(rawQrData)
+	const encryptedQrData = encrypt(rawQrData)
 	const qrCodeBuffer = await QRCode.toBuffer(encryptedQrData, { type: "png", width: 300, margin: 2 })
 
 	let pdfBuffer: Buffer | undefined

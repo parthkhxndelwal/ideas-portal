@@ -204,3 +204,79 @@
   transform: translateX(0);
   transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
+
+/* HTML5 QR Code Scanner Styling */
+#qr-reader {
+  border: none !important;
+}
+
+#qr-reader__dashboard_section_csr button {
+  background-color: rgb(37 99 235) !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0.375rem !important;
+  transition: background-color 0.2s !important;
+}
+
+#qr-reader__dashboard_section_csr button:hover {
+  background-color: rgb(29 78 216) !important;
+}
+
+.dark #qr-reader__dashboard_section_csr button {
+  background-color: rgb(29 78 216) !important;
+}
+
+.dark #qr-reader__dashboard_section_csr button:hover {
+  background-color: rgb(37 99 235) !important;
+}
+
+#qr-reader__dashboard_section_swaplink {
+  color: rgb(37 99 235) !important;
+  text-decoration: none !important;
+}
+
+#qr-reader__dashboard_section_swaplink:hover {
+  text-decoration: underline !important;
+}
+
+.dark #qr-reader__dashboard_section_swaplink {
+  color: rgb(96 165 250) !important;
+}
+
+#qr-reader video {
+  border-radius: 0.5rem !important;
+}
+
+#qr-reader__scan_region {
+  border: 2px solid rgb(59 130 246) !important;
+}
+
+.dark #qr-reader__scan_region {
+  border-color: rgb(96 165 250) !important;
+}
+
+#qr-reader__header_message {
+  color: rgb(64 64 64) !important;
+  font-size: 0.875rem !important;
+}
+
+.dark #qr-reader__header_message {
+  color: rgb(212 212 212) !important;
+}
+
+#qr-reader select {
+  background-color: white !important;
+  color: rgb(23 23 23) !important;
+  border: 1px solid rgb(212 212 212) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+.dark #qr-reader select {
+  background-color: rgb(64 64 64) !important;
+  color: rgb(245 245 245) !important;
+  border-color: rgb(82 82 82) !important;
+}
+
+

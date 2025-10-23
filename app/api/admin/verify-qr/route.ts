@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Decrypt and validate the QR data
-    const decryptedResult = await decryptVolunteerQRData(qrData)
+    const decryptedResult = decryptVolunteerQRData(qrData)
 
     if (!decryptedResult.isValid || !decryptedResult.rollNumber) {
       return NextResponse.json({ 

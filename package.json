@@ -49,6 +49,7 @@
     "embla-carousel-react": "8.5.1",
     "gcp-metadata": "latest",
     "geist": "latest",
+    "html5-qrcode": "^2.3.8",
     "input-otp": "1.4.1",
     "jsonwebtoken": "latest",
     "jspdf": "latest",
