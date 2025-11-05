@@ -104,3 +104,36 @@ export function validateEmailWithTLD(email: string): { isValid: boolean; error?:
 
   return { isValid: true }
 }
+
+/**
+ * Calculates the academic year based on semester number
+ * @param semester - The semester number (1, 2, 3, 4, etc.)
+ * @returns The calculated year as a string, or empty string if invalid
+ */
+export function calculateYearFromSemester(semester: number): string {
+  if (!semester || semester < 1) {
+    return ""
+  }
+  // Semesters 1-2 = Year 1, 3-4 = Year 2, 5-6 = Year 3, etc.
+  return Math.ceil(semester / 2).toString()
+}
+
+/**
+ * Extracts semester number from courseAndSemester string and calculates year
+ * @param courseAndSemester - String like "B.Tech CSE 5" where 5 is the semester
+ * @returns The calculated year as a string, or empty string if not found
+ */
+export function calculateYearFromCourseAndSemester(courseAndSemester: string): string {
+  if (!courseAndSemester) {
+    return ""
+  }
+  
+  // Extract semester number from the end of the string
+  const semesterMatch = courseAndSemester.match(/(\d+)$/)
+  if (semesterMatch) {
+    const semester = parseInt(semesterMatch[1], 10)
+    return calculateYearFromSemester(semester)
+  }
+  
+  return ""
+}

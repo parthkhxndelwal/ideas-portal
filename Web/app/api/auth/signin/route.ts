@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       },
       // Add a flag to indicate if user needs to confirm details
       needsDetailsConfirmation: user.role === "participant" && user.registrationStatus === "pending",
+      // Add a flag to indicate if user needs to set password
+      needsPasswordChange: user.needsPasswordChange === true,
     })
   } catch (error) {
     console.error("Signin error:", error)

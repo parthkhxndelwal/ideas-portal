@@ -10,8 +10,27 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await Database.findUserByEmail(email)
-    if (!user || !user.rollNumber) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // For non-university users, return empty details or existing user details
+    if (!user.isFromUniversity) {
+      return NextResponse.json({
+        details: {
+          name: user.name || "",
+          rollNumber: user.rollNumber || "",
+          courseAndSemester: user.courseAndSemester || "",
+          year: user.year || "",
+        },
+        isFromUniversity: false,
+        requiresManualEntry: true,
+      })
+    }
+
+    // For university users, fetch from roll number database
+    if (!user.rollNumber) {
+      return NextResponse.json({ error: "Roll number not found" }, { status: 404 })
     }
 
     const rollNumberData = await Database.findRollNumberData(user.rollNumber)
@@ -26,6 +45,8 @@ export async function POST(request: NextRequest) {
         courseAndSemester: rollNumberData.courseAndSemester,
         year: rollNumberData.year,
       },
+      isFromUniversity: true,
+      requiresManualEntry: false,
     })
   } catch (error) {
     console.error("Details fetch error:", error)

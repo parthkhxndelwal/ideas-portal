@@ -31,8 +31,8 @@ export default function RollNumberErrorPage() {
                 <ul className="list-disc list-inside space-y-1 text-sm text-neutral-400">
                   <li>
                     Email us at{' '}
-                    <a href="mailto:support.ideas.krmu@gmail.com" className="text-blue-400 hover:underline">
-                      support.ideas.krmu@gmail.com
+                    <a href="mailto:krmuevents@krmangalam.edu.in" className="text-blue-400 hover:underline">
+                      krmuevents@krmangalam.edu.in
                     </a>
                   </li>
                   <li>Include your Name, Roll Number, Course, Year and Department/School.</li>
@@ -46,7 +46,7 @@ export default function RollNumberErrorPage() {
 
               <div className="mt-6 text-center">
                 <a
-                  href="mailto:support.ideas.krmu@gmail.com"
+                  href="mailto:krmuevents@krmangalam.edu.in"
                   className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-md shadow"
                 >
                   Email Support

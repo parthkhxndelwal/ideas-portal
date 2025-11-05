@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import AdminLayout from "@/components/admin/AdminLayout"
+import { toast } from "@/components/ui/use-toast"
 import {
   BarChart3,
   Database,
@@ -12,6 +13,8 @@ import {
   Ban,
   DollarSign,
   LogIn,
+  Calendar,
+  RefreshCw,
 } from "lucide-react"
 
 export default function AdminPage() {
@@ -39,6 +42,12 @@ export default function AdminPage() {
       action: () => router.push("/admin/configure-payment"),
     },
     {
+      title: "Configure Subevents",
+      description: "Create and manage subevents with capacity limits and venues",
+      icon: Calendar,
+      action: () => router.push("/admin/configure-subevents"),
+    },
+    {
       title: "Configure Roll Number Database",
       description: "Update the roll number database with student information",
       icon: Database,
@@ -49,6 +58,12 @@ export default function AdminPage() {
       description: "Manually register a student by entering their details",
       icon: UserPlus,
       action: () => router.push("/admin/manual-registration"),
+    },
+    {
+      title: "Silent Bulk Registration",
+      description: "Register multiple students from JSON data without sending emails",
+      icon: UserPlus,
+      action: () => router.push("/admin/silent-bulk-registration"),
     },
     {
       title: "Generate a Volunteer Entry QR",
@@ -63,12 +78,46 @@ export default function AdminPage() {
       action: () => router.push("/admin/verify-qr"),
     },
     {
-      title: "Blacklist Management",
-      description: "Add or remove roll numbers from the blacklist",
-      icon: Ban,
-      action: () => router.push("/admin/blacklist"),
+      title: "Migrate Manual Registrations",
+      description: "Update existing manual registrations to complete status for mobile app compatibility",
+      icon: RefreshCw,
+      action: () => handleMigration(),
     },
   ]
+
+  const handleMigration = async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const response = await fetch("/api/admin/migrate-registrations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Migration completed",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Migration failed",
+          description: result.error || "An error occurred",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Migration error:", error)
+      toast({
+        title: "Migration failed",
+        description: "An error occurred while running the migration",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <AdminLayout title="Main Dashboard">

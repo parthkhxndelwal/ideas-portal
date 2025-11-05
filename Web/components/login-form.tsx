@@ -17,11 +17,12 @@ function CircularLoader() {
 }
 
 export function LoginForm() {
-  const [isSignUp, setIsSignUp] = useState(true)
+  const [isSignUp, setIsSignUp] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rollNumber: "",
+    isFromUniversity: true, // Default to true for university students
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -42,7 +43,7 @@ export function LoginForm() {
 
   const handleModeSwitch = () => {
     setIsSignUp(!isSignUp)
-    setFormData({ email: "", password: "", rollNumber: "" })
+    setFormData({ email: "", password: "", rollNumber: "", isFromUniversity: true })
     setError("")
     setSuccess("")
     setEmailError("")
@@ -194,27 +195,46 @@ export function LoginForm() {
               />
             </div>
 
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                isSignUp
-                  ? "max-h-24 opacity-100"
-                  : "max-h-0 opacity-0"
-              }`}
-            >
-              <Label htmlFor="rollNumber" className="text-neutral-200 mb-2 block">
-                Roll Number
-              </Label>
-              <Input
-                id="rollNumber"
-                type="text"
-                value={formData.rollNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, rollNumber: e.target.value })
-                }
-                className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12 transition-all duration-200"
-                required={isSignUp}
-              />
-            </div>
+            {isSignUp && (
+              <div className="space-y-3.5">
+                <div className="flex items-center space-x-2 bg-neutral-800/50 p-3 rounded border border-neutral-700">
+                  <input
+                    id="isFromUniversity"
+                    type="checkbox"
+                    checked={formData.isFromUniversity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, isFromUniversity: e.target.checked })
+                    }
+                    className="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                  />
+                  <Label htmlFor="isFromUniversity" className="text-neutral-200 cursor-pointer text-sm">
+                    I am from KR Mangalam University
+                  </Label>
+                </div>
+
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    formData.isFromUniversity
+                      ? "max-h-24 opacity-100"
+                      : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <Label htmlFor="rollNumber" className="text-neutral-200 mb-2 block">
+                    Roll Number
+                  </Label>
+                  <Input
+                    id="rollNumber"
+                    type="text"
+                    value={formData.rollNumber}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rollNumber: e.target.value })
+                    }
+                    className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:border-blue-500 h-12 transition-all duration-200"
+                    required={isSignUp && formData.isFromUniversity}
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded border border-red-800 animate-in fade-in duration-200">

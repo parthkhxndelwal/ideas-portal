@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     try {
       const user = await Database.findUserById(decoded.userId)
       if (user && user.email && user.name && user.rollNumber) {
-        await sendPaymentConfirmationEmail(user.email, user.name, transactionId, user.rollNumber)
+        const config = await Database.getEventConfig()
+        await sendPaymentConfirmationEmail(user.email, user.name, transactionId, user.rollNumber, config.paymentAmount)
         console.log("Payment confirmation email sent to:", user.email)
       }
     } catch (emailError) {

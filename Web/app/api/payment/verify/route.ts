@@ -77,12 +77,46 @@ export async function POST(request: NextRequest) {
       const user = await Database.findUserById(decoded.userId)
       if (user && user.email && user.name && user.rollNumber) {
         const config = await Database.getEventConfig()
+        
+        // Get user's selected subevent information
+        let subeventName: string | undefined
+        let venue: string | undefined
+        let qrCodeBuffer: Buffer | undefined
+        
+        if (user.selectedSubEvent) {
+          const subevent = await Database.getSubEventById(user.selectedSubEvent)
+          if (subevent) {
+            subeventName = subevent.name
+            venue = subevent.venue
+            
+            // Generate QR code for the user
+            const QRCode = await import("qrcode")
+            const qrData = JSON.stringify({
+              rollNumber: user.rollNumber,
+              name: user.name,
+              subevent: subevent.name,
+              venue: subevent.venue,
+              transactionId: transaction.transactionId,
+              timestamp: new Date().toISOString(),
+            })
+            
+            qrCodeBuffer = await QRCode.toBuffer(qrData, {
+              type: 'png',
+              width: 300,
+              margin: 2,
+            })
+          }
+        }
+        
         await sendPaymentConfirmationEmail(
           user.email, 
           user.name, 
           transaction.transactionId, 
           user.rollNumber,
-          config.paymentAmount
+          config.paymentAmount,
+          subeventName,
+          venue,
+          qrCodeBuffer
         )
         console.log("Payment confirmation email sent to:", user.email)
       }

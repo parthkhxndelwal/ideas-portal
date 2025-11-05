@@ -23,6 +23,12 @@ export async function GET(request: NextRequest) {
     // Get pending transactions for the user
     const pendingTransactions = await Database.findPendingTransactionsByUserId(decoded.userId)
 
+    // Get completed transaction if exists
+    let completedTransaction = null
+    if (user.transactionId) {
+      completedTransaction = await Database.findTransaction(user.transactionId)
+    }
+
     return NextResponse.json({
       user: {
         id: user._id.toString(),
@@ -33,6 +39,7 @@ export async function GET(request: NextRequest) {
         registrationStatus: user.registrationStatus,
         paymentStatus: user.paymentStatus,
         transactionId: user.transactionId,
+        paymentAmount: completedTransaction?.amount,
       },
       pendingTransactions: pendingTransactions.map(t => ({
         id: t._id.toString(),

@@ -93,6 +93,10 @@ export default function PaymentPage() {
           localStorage.setItem("verifiedEmail", data.email)
           router.push("/confirm-details")
         }
+
+        if (data.needsSubEventSelection) {
+          router.push("/dashboard")
+        }
       })
       .catch((err) => {
         console.error("Error checking confirmation status:", err)

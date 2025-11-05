@@ -6,7 +6,8 @@ import { generateRegistrationPDF } from "@/lib/pdf-generator"
 import { encrypt } from "@/lib/crypto"
 import QRCode from "qrcode"
 
-const MANUAL_TRANSACTION_ID = "CASH_TRANSACT_1905"
+// Transaction ID prefix for manual registrations
+const MANUAL_TRANSACTION_PREFIX = "MANUAL_"
 
 class ApiError extends Error {
 	constructor(public status: number, message: string) {
@@ -18,10 +19,14 @@ interface RegisterInput {
 	name?: string
 	rollNumber?: string
 	email?: string
-	password?: string
+	password?: string // Optional - will be auto-generated if not provided
 	course?: string
 	semester?: string
 	courseAndSemester?: string
+	transactionId?: string
+	isFromUniversity?: boolean
+	selectedSubEvent?: string
+	paymentMethod?: string
 }
 
 interface RegisterResult {
@@ -48,6 +53,9 @@ export async function POST(request: NextRequest) {
 			course: body.course,
 			semester: body.semester,
 			courseAndSemester: body.courseAndSemester,
+			transactionId: body.transactionId,
+			isFromUniversity: body.isFromUniversity,
+			selectedSubEvent: body.selectedSubEvent,
 		})
 
 		if (!result.success) {
@@ -85,12 +93,78 @@ async function requireAdmin(request: NextRequest) {
 }
 
 async function registerParticipant(input: RegisterInput): Promise<RegisterResult> {
-	const { name, rollNumber, email, password, course, semester } = input
+	const { name, rollNumber, email, course, semester, isFromUniversity = true, selectedSubEvent, paymentMethod = "Paytm" } = input
 	const courseAndSemester = input.courseAndSemester || [course, semester].filter(Boolean).join(" ").trim()
 
-	if (!rollNumber || !email || !password || !name || !courseAndSemester) {
-		return { success: false, error: "All fields are required", status: 400 }
+	// Validate required fields
+	if (!email || !name) {
+		return { success: false, error: "Name and email are required", status: 400 }
 	}
+
+	// Generate password if not provided: participant#emailBefore@
+	let password = input.password
+	if (!password) {
+		const emailUsername = email.split('@')[0]
+		password = `participant#${emailUsername}`
+	}
+
+	if (!password) {
+		return { success: false, error: "Unable to generate password", status: 500 }
+	}
+
+	const plainPassword = password
+
+	// Roll number is always required
+	if (!rollNumber) {
+		return { success: false, error: "Roll number is required", status: 400 }
+	}
+
+	// For KR Mangalam University students, validate roll number exists in database
+	if (isFromUniversity) {
+		const rollNumberData = await Database.findRollNumberData(rollNumber)
+		if (!rollNumberData) {
+			return { success: false, error: "Roll number not found in KR Mangalam University database. Please verify the roll number or uncheck 'From KR Mangalam University' if this is an external participant.", status: 400 }
+		}
+	}
+
+	// Transaction ID is required and must be unique
+	if (!input.transactionId) {
+		return { success: false, error: "Transaction ID is required", status: 400 }
+	}
+
+	// Check if transaction ID already exists
+	const existingTransaction = await Database.findUserByTransactionId(input.transactionId)
+	if (existingTransaction) {
+		return { success: false, error: "Transaction ID already exists. Please use a unique transaction ID.", status: 400 }
+	}
+
+	// For university students, course and semester are required
+	if (isFromUniversity && !courseAndSemester) {
+		return { success: false, error: "Course and semester are required for university students", status: 400 }
+	}
+
+	// Validate selected subevent - REQUIRED for all participants
+	if (!selectedSubEvent) {
+		return { success: false, error: "Subevent selection is required for all participants", status: 400 }
+	}
+
+	const activeSubEvents = await Database.getActiveSubEvents()
+	const subEvent = activeSubEvents.find(se => se.id === selectedSubEvent)
+	
+	if (!subEvent) {
+		return { success: false, error: "Selected subevent is not available", status: 400 }
+	}
+
+	// Check capacity
+	if (subEvent.maxParticipants) {
+		const participantCount = await Database.getSubEventParticipantCount(selectedSubEvent)
+		if (participantCount >= subEvent.maxParticipants) {
+			return { success: false, error: "Selected subevent has reached maximum capacity", status: 400 }
+		}
+	}
+
+	const selectedSubEventData = selectedSubEvent
+	const registrationStatus: "confirmed" = "confirmed"
 
 	const existingUser = await Database.findUserByEmail(email)
 	if (existingUser) {
@@ -100,9 +174,8 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 	const eventConfig = await Database.getEventConfig()
 	const paymentAmount = Number(eventConfig?.paymentAmount ?? 0)
 
-	const hashedPassword = await hashPassword(password)
-	const transactionId = MANUAL_TRANSACTION_ID
-	const registrationStatus = "confirmed" as const
+	const hashedPassword = await hashPassword(plainPassword)
+	const transactionId = input.transactionId
 	const paymentStatus = "completed" as const
 
 	const userData = {
@@ -110,12 +183,16 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 		password: hashedPassword,
 		role: "participant" as const,
 		isEmailVerified: true,
+		isFromUniversity,
 		rollNumber,
 		name,
-		courseAndSemester,
+		courseAndSemester: courseAndSemester || undefined,
+		year: input.course ? undefined : undefined, // Year can be extracted or left empty
 		registrationStatus,
 		paymentStatus,
 		transactionId,
+		selectedSubEvent: selectedSubEventData,
+		needsPasswordChange: true, // Manually registered users need to set their password
 	}
 
 	const createdUser = await Database.createUser(userData)
@@ -126,7 +203,7 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 			amount: paymentAmount,
 			status: "completed",
 			transactionId,
-			paymentMethod: "cash",
+			paymentMethod: paymentMethod.toLowerCase(),
 			paymentCaptured: true,
 		})
 	} catch (transactionError) {
@@ -134,7 +211,8 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 		return { success: false, error: "Payment record failed", status: 500 }
 	}
 
-	const rawQrData = `participant_ideas3.0_${rollNumber}_${transactionId}`
+	// QR code now uses only transaction ID (standardized format)
+	const rawQrData = `participant_ideas3.0_${transactionId}`
 	const encryptedQrData = encrypt(rawQrData)
 	const qrCodeBuffer = await QRCode.toBuffer(encryptedQrData, { type: "png", width: 300, margin: 2 })
 
@@ -152,11 +230,14 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 			email,
 			name,
 			rollNumber,
-			password,
 			transactionId,
 			paymentAmount,
 			qrCodeBuffer,
 			pdfBuffer,
+			subeventName: subEvent.name,
+			venue: subEvent.venue,
+			paymentMethod,
+			temporaryPassword: plainPassword,
 		})
 	} catch (emailError) {
 		console.error("Failed to send manual registration email:", emailError)
@@ -182,11 +263,11 @@ async function handleBulkUpload(request: NextRequest) {
 	}
 
 	const headers = lines[0].split(",").map((header) => normalizeKey(header))
-	const requiredHeaders = ["name", "roll_number", "email", "password", "course", "semester"]
+	const requiredHeaders = ["name", "roll_number", "email", "transaction_id", "selected_sub_event"]
 
 	const hasAllHeaders = requiredHeaders.every((header) => headers.includes(header))
 	if (!hasAllHeaders) {
-		throw new ApiError(400, "Invalid CSV header. Please download the sample template.")
+		throw new ApiError(400, "Invalid CSV header. Required: Name, Roll Number, Email, Transaction ID, Selected Sub Event. Please download the sample template.")
 	}
 
 	const results: Array<{ email: string; success?: boolean; error?: string }> = []
@@ -199,13 +280,20 @@ async function handleBulkUpload(request: NextRequest) {
 			row[header] = (values[headerIndex] ?? "").trim()
 		})
 
+		const isFromUniversity = row["is_from_university"] ? row["is_from_university"].toLowerCase() === "true" : true
+		
+		// Password is optional in CSV - will be auto-generated if empty
 		const registerResult = await registerParticipant({
 			name: row["name"],
 			rollNumber: row["roll_number"],
 			email: row["email"],
-			password: row["password"],
+			password: row["password"], // Optional - will be auto-generated if empty
 			course: row["course"],
 			semester: row["semester"],
+			transactionId: row["transaction_id"],
+			isFromUniversity,
+			selectedSubEvent: row["selected_sub_event"],
+			paymentMethod: row["payment_method"] || "Paytm", // Default to Paytm if not provided
 		})
 
 		if (registerResult.success) {

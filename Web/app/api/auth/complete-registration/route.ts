@@ -15,15 +15,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Validate required fields
+    if (!userDetails.name) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 })
+    }
+
+    // For non-university users, roll number is still required but other details are optional
+    if (!user.isFromUniversity) {
+      if (!userDetails.rollNumber) {
+        return NextResponse.json({ error: "Roll number is required" }, { status: 400 })
+      }
+    }
+
+    // Update user with provided details
     await Database.updateUser(user._id.toString(), {
       name: userDetails.name,
-      courseAndSemester: userDetails.courseAndSemester,
-      year: userDetails.year,
+      rollNumber: userDetails.rollNumber || user.rollNumber,
+      courseAndSemester: userDetails.courseAndSemester || undefined,
+      year: userDetails.year || undefined,
       registrationStatus: "details_confirmed",
     })
 
     try {
-      await sendWelcomeEmail(email, userDetails.name)
+      const config = await Database.getEventConfig()
+      await sendWelcomeEmail(email, userDetails.name, config.paymentAmount)
       console.log("Welcome email sent to:", email)
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError)

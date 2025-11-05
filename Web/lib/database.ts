@@ -1,6 +1,6 @@
 import clientPromise from "./mongodb"
 import { ObjectId } from "mongodb"
-import type { User, RollNumberData, BlacklistedRollNumber, Transaction, EntryRecord, ScannerDevice, ScanRecord } from "./models"
+import type { User, RollNumberData, BlacklistedRollNumber, Transaction, EntryRecord, ScannerDevice, ScanRecord, SubEvent } from "./models"
 
 export class Database {
   private static async getDb() {
@@ -63,6 +63,19 @@ export class Database {
       return user
     } catch (error) {
       console.error("Error finding user by roll number:", error)
+      throw new Error("Failed to find user")
+    }
+  }
+
+  static async findUserByTransactionId(transactionId: string) {
+    try {
+      const db = await this.getDb()
+      const trimmedId = String(transactionId || "").trim()
+      const user = await db.collection("users").findOne({ transactionId: trimmedId })
+      console.log(`User lookup by transaction ID "${trimmedId}" result:`, user ? `found (${user.email})` : "not found")
+      return user
+    } catch (error) {
+      console.error("Error finding user by transaction ID:", error)
       throw new Error("Failed to find user")
     }
   }
@@ -373,6 +386,9 @@ export class Database {
         ])
         .toArray()
 
+      // Get subevent statistics
+      const subEventStats = await this.getSubEventStatistics()
+
       // Get registrations over time (last 30 days)
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       const registrationTrends = await db
@@ -403,6 +419,7 @@ export class Database {
         completedPayments,
         totalRevenue,
         courseBreakdown,
+        subEventStats,
         registrationTrends,
       }
     } catch (error) {
@@ -461,6 +478,7 @@ export class Database {
         // Create default config if it doesn't exist
         const defaultConfig = {
           paymentAmount: 200,
+          subEvents: [],
           updatedAt: new Date(),
           updatedBy: "system",
         }
@@ -475,7 +493,7 @@ export class Database {
     }
   }
 
-  static async updateEventConfig(paymentAmount: number, updatedBy: string) {
+  static async updateEventConfig(paymentAmount: number, subEvents: any[], updatedBy: string) {
     try {
       const db = await this.getDb()
       const result = await db.collection("eventConfig").updateOne(
@@ -483,6 +501,7 @@ export class Database {
         {
           $set: {
             paymentAmount,
+            subEvents,
             updatedAt: new Date(),
             updatedBy,
           },
@@ -494,6 +513,88 @@ export class Database {
     } catch (error) {
       console.error("Error updating event config:", error)
       throw new Error("Failed to update event config")
+    }
+  }
+
+  static async getSubEvents() {
+    try {
+      const db = await this.getDb()
+      const config = await this.getEventConfig()
+      return config.subEvents || []
+    } catch (error) {
+      console.error("Error getting subevents:", error)
+      throw new Error("Failed to get subevents")
+    }
+  }
+
+  static async getActiveSubEvents(): Promise<SubEvent[]> {
+    try {
+      const db = await this.getDb()
+      const config = await this.getEventConfig()
+      const activeSubEvents = (config.subEvents || []).filter((event: SubEvent) => event.isActive)
+
+      // Add participant counts to each subevent
+      const subEventsWithCounts = await Promise.all(
+        activeSubEvents.map(async (subEvent: SubEvent) => {
+          const participantCount = await this.getSubEventParticipantCount(subEvent.id)
+          return {
+            ...subEvent,
+            participantCount,
+          }
+        })
+      )
+
+      return subEventsWithCounts
+    } catch (error) {
+      console.error("Error getting active subevents:", error)
+      throw new Error("Failed to get active subevents")
+    }
+  }
+
+  static async getSubEventById(subEventId: string): Promise<SubEvent | undefined> {
+    try {
+      const subEvents = await this.getSubEvents()
+      return subEvents.find((event: SubEvent) => event.id === subEventId)
+    } catch (error) {
+      console.error("Error getting subevent by ID:", error)
+      throw new Error("Failed to get subevent")
+    }
+  }
+
+  static async getSubEventStatistics() {
+    try {
+      const db = await this.getDb()
+      const subEvents = await this.getSubEvents()
+      
+      const statistics = await Promise.all(
+        subEvents.map(async (subEvent: SubEvent) => {
+          const participantCount = await db.collection("users").countDocuments({
+            selectedSubEvent: subEvent.id,
+            role: "participant"
+          })
+          
+          const confirmedCount = await db.collection("users").countDocuments({
+            selectedSubEvent: subEvent.id,
+            role: "participant",
+            registrationStatus: "confirmed",
+            paymentStatus: "completed"
+          })
+          
+          return {
+            subEventId: subEvent.id,
+            subEventName: subEvent.name,
+            totalParticipants: participantCount,
+            confirmedParticipants: confirmedCount,
+            maxParticipants: subEvent.maxParticipants,
+            isActive: subEvent.isActive
+          }
+        })
+      )
+      
+      return statistics
+    } catch (error) {
+      console.error("Error getting subevent statistics:", error)
+      throw new Error("Failed to get subevent statistics")
     }
   }
 
@@ -520,7 +621,7 @@ export class Database {
   }
 
   /**
-   * Check if a user has already entered today
+   * Check if a user has already entered today (by roll number - for backward compatibility)
    * @param rollNumber - The user's roll number
    * @param bypassDayCheck - If true, allows multiple entries per day (for testing/special cases)
    * @returns True if user has already entered today
@@ -547,6 +648,38 @@ export class Database {
       return result
     } catch (error) {
       console.error("Error checking entry:", error)
+      throw new Error("Failed to check entry")
+    }
+  }
+
+  /**
+   * Check if a transaction ID has already entered today
+   * @param transactionId - The transaction ID
+   * @param bypassDayCheck - If true, allows multiple entries per day (for testing/special cases)
+   * @returns True if transaction has already entered today
+   */
+  static async hasTransactionEnteredToday(transactionId: string, bypassDayCheck: boolean = false): Promise<boolean> {
+    try {
+      // If bypass is enabled, always return false (allowing entry)
+      if (bypassDayCheck) {
+        console.log("Entry check for transaction", transactionId, "today: BYPASSED - multiple entries allowed")
+        return false
+      }
+
+      const db = await this.getDb()
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Start of today
+      
+      const entry = await db.collection("entries").findOne({
+        transactionId,
+        entryDate: { $gte: today }
+      })
+      
+      const result = !!entry
+      console.log("Entry check for transaction", transactionId, "today:", result ? "already entered" : "not entered")
+      return result
+    } catch (error) {
+      console.error("Error checking entry by transaction:", error)
       throw new Error("Failed to check entry")
     }
   }
@@ -873,7 +1006,7 @@ export class Database {
   }
 
   /**
-   * Check if any scan record exists for roll number on a specific date
+   * Check if any scan record exists for roll number on a specific date (backward compatibility)
    * This prevents multiple scans of the same QR per day, regardless of outcome
    */
   static async findScanRecordByRollNumberAndDate(rollNumber: string, date: Date) {
@@ -893,6 +1026,31 @@ export class Database {
       return scanRecord
     } catch (error) {
       console.error("Error finding scan record by roll number and date:", error)
+      throw new Error("Failed to find scan record")
+    }
+  }
+
+  /**
+   * Check if any scan record exists for transaction ID on a specific date
+   * This prevents multiple scans of the same QR per day, regardless of outcome
+   */
+  static async findScanRecordByTransactionIdAndDate(transactionId: string, date: Date) {
+    try {
+      const db = await this.getDb()
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+      
+      const scanRecord = await db.collection("scanRecords").findOne({
+        transactionId,
+        entryDate: { $gte: startOfDay, $lte: endOfDay }
+      })
+      
+      return scanRecord
+    } catch (error) {
+      console.error("Error finding scan record by transaction ID and date:", error)
       throw new Error("Failed to find scan record")
     }
   }
@@ -925,6 +1083,32 @@ export class Database {
     } catch (error) {
       console.error("Error getting scan statistics:", error)
       throw new Error("Failed to get scan statistics")
+    }
+  }
+
+  static async getSubEventParticipantCount(subEventId: string): Promise<number> {
+    try {
+      const db = await this.getDb()
+      return await db.collection("users").countDocuments({
+        selectedSubEvent: subEventId,
+        role: "participant"
+      })
+    } catch (error) {
+      console.error("Error counting subevent participants:", error)
+      throw new Error("Failed to count subevent participants")
+    }
+  }
+
+  /**
+   * Run database migrations
+   */
+  static async runMigration(migrationFunction: (db: any) => Promise<any>) {
+    try {
+      const db = await this.getDb()
+      return await migrationFunction(db)
+    } catch (error) {
+      console.error("Migration failed:", error)
+      throw error
     }
   }
 }

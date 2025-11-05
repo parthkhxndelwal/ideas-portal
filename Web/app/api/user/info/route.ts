@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
         rollNumber: user.rollNumber || null,
         name: user.name || null,
         registrationStatus: user.registrationStatus,
+        isFromUniversity: user.isFromUniversity ?? true,
       },
     })
   } catch (error) {

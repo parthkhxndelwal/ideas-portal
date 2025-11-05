@@ -79,28 +79,16 @@ export function decryptVolunteerQRData(encodedData: string): {
         isValid: true
       }
     } else if (decrypted.startsWith('participant_ideas3.0_')) {
-      const remainder = decrypted.replace('participant_ideas3.0_', '')
-      const separatorIndex = remainder.indexOf('_')
-
-      if (separatorIndex === -1) {
-        return {
-          originalData: decrypted,
-          rollNumber: null,
-          transactionId: null,
-          qrType: "unknown",
-          isValid: false
-        }
-      }
-
-      const rollNumber = remainder.slice(0, separatorIndex)
-      const transactionId = remainder.slice(separatorIndex + 1)
+      // New standardized format: participant_ideas3.0_${transactionId}
+      // Transaction ID is now the only identifier (rollNumber is fetched from database)
+      const transactionId = decrypted.replace('participant_ideas3.0_', '')
 
       return {
         originalData: decrypted,
-        rollNumber,
+        rollNumber: null, // Roll number is no longer in QR code
         transactionId,
         qrType: "participant",
-        isValid: Boolean(rollNumber && transactionId)
+        isValid: Boolean(transactionId)
       }
     } else {
       return {

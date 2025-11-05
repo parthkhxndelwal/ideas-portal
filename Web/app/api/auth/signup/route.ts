@@ -7,11 +7,18 @@ import { validateEmailWithTLD } from "@/lib/utils"
 export async function POST(request: NextRequest) {
   try {
     console.log("Signup request received")
-    const { email, password, rollNumber } = await request.json()
+    const { email, password, rollNumber, isFromUniversity } = await request.json()
 
-    if (!email || !password || !rollNumber) {
+    // Validate based on whether user is from university
+    if (!email || !password) {
       console.log("Missing required fields")
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+    }
+
+    // Roll number is only required if user is from university
+    if (isFromUniversity && !rollNumber) {
+      console.log("Missing roll number for university student")
+      return NextResponse.json({ error: "Roll number is required for university students" }, { status: 400 })
     }
 
     const emailValidation = validateEmailWithTLD(email)
@@ -30,11 +37,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 })
     }
 
-    console.log("Checking blacklist for roll number:", rollNumber)
-    const isBlacklisted = await Database.isRollNumberBlacklisted(rollNumber)
-    if (isBlacklisted) {
-      console.log("Roll number is blacklisted")
-      return NextResponse.json({ error: "Server Timed Out." }, { status: 400 })
+    // Only check blacklist if user is from university and has roll number
+    if (isFromUniversity && rollNumber) {
+      console.log("Checking blacklist for roll number:", rollNumber)
+      const isBlacklisted = await Database.isRollNumberBlacklisted(rollNumber)
+      if (isBlacklisted) {
+        console.log("Roll number is blacklisted")
+        return NextResponse.json({ error: "Server Timed Out." }, { status: 400 })
+      }
     }
 
     console.log("Creating user account")
@@ -56,7 +66,8 @@ export async function POST(request: NextRequest) {
       password: hashedPassword,
       role: "participant" as const,
       isEmailVerified: false,
-      rollNumber,
+      isFromUniversity: isFromUniversity ?? true, // Default to true if not provided
+      rollNumber: rollNumber || undefined,
       registrationStatus: "pending" as const,
       paymentStatus: "pending" as const,
     }

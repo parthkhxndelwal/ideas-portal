@@ -14,6 +14,11 @@ interface Statistics {
   completedPayments: number
   totalRevenue: number
   courseBreakdown: Array<{ _id: string; count: number }>
+  subEventStats: Array<{
+    subEvent: { id: string; name: string; venue: string; maxParticipants: number }
+    participantCount: number
+    isFull: boolean
+  }>
   registrationTrends: Array<{ _id: string; count: number }>
 }
 
@@ -161,6 +166,49 @@ export default function StatisticsPage() {
                 </span>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Subevent Statistics */}
+      <Card className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-lg border border-neutral-200/50 dark:border-neutral-700/50 mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-neutral-900 dark:text-neutral-200">
+            <Users className="w-5 h-5" />
+            Subevent Statistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {statistics.subEventStats && statistics.subEventStats.length > 0 ? (
+              statistics.subEventStats
+                .filter((stat) => stat?.subEvent)
+                .map((stat, index) => (
+                  <div key={index} className="p-4 bg-neutral-50/80 dark:bg-neutral-800/90 backdrop-blur-sm rounded-md">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-200">{stat.subEvent.name || "Unnamed Event"}</h3>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-500">{stat.subEvent.venue || "No venue"}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          stat.isFull
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                        }`}>
+                          {stat.participantCount}/{stat.subEvent.maxParticipants || 0}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-500">Participants</span>
+                      <span className="font-bold text-neutral-900 dark:text-neutral-200">{stat.participantCount || 0}</span>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <p className="text-neutral-600 dark:text-neutral-500 text-center py-4">No subevent data available</p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -6,16 +6,23 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { LoadingTransition } from "@/components/ui/loading-transition"
 import { ConfirmDetailsModal } from "@/components/confirm-details-modal"
 
 interface UserDetails {
-  _id: string
+  _id?: string
   name: string
-  email: string
+  email?: string
   rollNumber: string
   courseAndSemester: string
   year: string
+}
+
+interface DetailsResponse {
+  details: UserDetails
+  isFromUniversity: boolean
+  requiresManualEntry: boolean
 }
 
 export default function ConfirmDetailsPage() {
@@ -24,10 +31,17 @@ export default function ConfirmDetailsPage() {
   const [error, setError] = useState("")
   const [showModal, setShowModal] = useState(false)
   const [email, setEmail] = useState("")
-  const [userInfo, setUserInfo] = useState<{rollNumber?: string, email?: string} | null>(null)
+  const [userInfo, setUserInfo] = useState<{rollNumber?: string, email?: string, isFromUniversity?: boolean} | null>(null)
   const [rollNumberNotFound, setRollNumberNotFound] = useState(false)
   const [isEditingRollNumber, setIsEditingRollNumber] = useState(false)
   const [editableRollNumber, setEditableRollNumber] = useState("")
+  const [isManualEntry, setIsManualEntry] = useState(false)
+  const [manualDetails, setManualDetails] = useState({
+    name: "",
+    rollNumber: "",
+    courseAndSemester: "",
+    year: "",
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -35,9 +49,7 @@ export default function ConfirmDetailsPage() {
     const authToken = localStorage.getItem("authToken")
     
     if (!verifiedEmail) {
-      // Check if user has an auth token but needs to confirm details
       if (authToken) {
-        // Fetch user data to get email
         fetch("/api/user/profile", {
           headers: { Authorization: `Bearer ${authToken}` },
         })
@@ -77,9 +89,9 @@ export default function ConfirmDetailsPage() {
         const data = await response.json()
         setUserInfo({ 
           email: data.userInfo.email, 
-          rollNumber: data.userInfo.rollNumber 
+          rollNumber: data.userInfo.rollNumber,
+          isFromUniversity: data.userInfo.isFromUniversity
         })
-        // Set the editable roll number when we get user info
         if (data.userInfo.rollNumber) {
           setEditableRollNumber(data.userInfo.rollNumber)
         }
@@ -99,18 +111,28 @@ export default function ConfirmDetailsPage() {
         body: JSON.stringify({ email }),
       })
 
-      const data = await response.json()
+      const data: DetailsResponse = await response.json()
 
       if (response.ok) {
-        setUserDetails(data.details)
-        setRollNumberNotFound(false)
-        setError("") // Clear error when successful
+        // Check if manual entry is required
+        if (data.requiresManualEntry || !data.isFromUniversity) {
+          setIsManualEntry(true)
+          setManualDetails({
+            name: data.details.name || "",
+            rollNumber: data.details.rollNumber || "",
+            courseAndSemester: data.details.courseAndSemester || "",
+            year: data.details.year || "",
+          })
+          setUserDetails(null)
+        } else {
+          setUserDetails(data.details)
+          setRollNumberNotFound(false)
+        }
+        setError("")
       } else {
-        // Roll number data not found in database
         setUserDetails(null)
         setRollNumberNotFound(true)
         setError("")
-        // Note: editableRollNumber is set in fetchUserInfo
       }
     } catch (_error) {
       setError("An error occurred. Please try again.")
@@ -133,7 +155,6 @@ export default function ConfirmDetailsPage() {
       if (response.ok) {
         localStorage.removeItem("verifiedEmail")
         
-        // Update the stored user data to reflect the details confirmed status
         const userData = localStorage.getItem("userData")
         if (userData && userDetails) {
           const user = JSON.parse(userData)
@@ -153,23 +174,58 @@ export default function ConfirmDetailsPage() {
     }
   }
 
+  const handleManualSubmit = async () => {
+    // Validate manual entry
+    if (!manualDetails.name || !manualDetails.rollNumber) {
+      setError("Name and Roll Number are required")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/auth/complete-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, userDetails: manualDetails }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        localStorage.removeItem("verifiedEmail")
+        
+        const userData = localStorage.getItem("userData")
+        if (userData) {
+          const user = JSON.parse(userData)
+          user.registrationStatus = "details_confirmed"
+          user.name = manualDetails.name
+          user.rollNumber = manualDetails.rollNumber
+          user.courseAndSemester = manualDetails.courseAndSemester
+          user.year = manualDetails.year
+          localStorage.setItem("userData", JSON.stringify(user))
+        }
+        
+        router.push("/dashboard")
+      } else {
+        setError(data.error || "Registration failed")
+      }
+    } catch (_error) {
+      setError("An error occurred. Please try again.")
+    }
+  }
+
   const handleNo = () => {
     if (rollNumberNotFound) {
-      // Enable inline editing
       setIsEditingRollNumber(true)
     } else {
-      // Show modal for normal case
       setShowModal(true)
     }
   }
 
   const handleRollNumberConfirmYes = () => {
-    // User confirmed the roll number is correct, redirect to error page
     router.push("/roll-number-error")
   }
 
   const handleRollNumberConfirmNo = () => {
-    // Enable editing the roll number
     setIsEditingRollNumber(true)
   }
 
@@ -180,7 +236,6 @@ export default function ConfirmDetailsPage() {
     }
 
     try {
-      // Update the roll number
       const response = await fetch("/api/user/update-roll-number", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -190,7 +245,6 @@ export default function ConfirmDetailsPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Update user info and fetch details again
         setUserInfo(prev => prev ? {...prev, rollNumber: editableRollNumber} : {rollNumber: editableRollNumber})
         setIsEditingRollNumber(false)
         await fetchUserDetails(email)
@@ -238,7 +292,7 @@ export default function ConfirmDetailsPage() {
                 />
               </div>
               <p className="text-sm text-neutral-400">
-                Verify your academic details to continue with your IDEAS 3.0 registration.
+                {isManualEntry ? "Enter your details to complete registration" : "Verify your academic details to continue with your IDEAS 3.0 registration"}
               </p>
             </div>
 
@@ -254,10 +308,67 @@ export default function ConfirmDetailsPage() {
               <CardContent className="space-y-6 p-6">
                 <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5 shadow-inner shadow-black/30">
                   <h3 className="text-xl font-semibold text-neutral-100 text-center mb-6">
-                    Confirm your details
+                    {isManualEntry ? "Enter your details" : "Confirm your details"}
                   </h3>
 
-                  {userDetails ? (
+                  {/* Manual Entry Form for Non-University Users */}
+                  {isManualEntry ? (
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="name" className="text-xs uppercase tracking-wide text-neutral-400">Name *</Label>
+                        <Input
+                          id="name"
+                          type="text"
+                          value={manualDetails.name}
+                          onChange={(e) => setManualDetails({...manualDetails, name: e.target.value})}
+                          placeholder="Enter your full name"
+                          className="h-12 border-neutral-700 bg-neutral-950/60 text-neutral-100 placeholder:text-neutral-500"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="rollNumber" className="text-xs uppercase tracking-wide text-neutral-400">Roll Number *</Label>
+                        <Input
+                          id="rollNumber"
+                          type="text"
+                          value={manualDetails.rollNumber}
+                          onChange={(e) => setManualDetails({...manualDetails, rollNumber: e.target.value})}
+                          placeholder="Enter your roll number"
+                          className="h-12 border-neutral-700 bg-neutral-950/60 text-neutral-100 placeholder:text-neutral-500"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="courseAndSemester" className="text-xs uppercase tracking-wide text-neutral-400">Course & Semester (Optional)</Label>
+                        <Input
+                          id="courseAndSemester"
+                          type="text"
+                          value={manualDetails.courseAndSemester}
+                          onChange={(e) => setManualDetails({...manualDetails, courseAndSemester: e.target.value})}
+                          placeholder="E.g., B.Tech CSE Sem 5"
+                          className="h-12 border-neutral-700 bg-neutral-950/60 text-neutral-100 placeholder:text-neutral-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="year" className="text-xs uppercase tracking-wide text-neutral-400">Year (Optional)</Label>
+                        <Input
+                          id="year"
+                          type="text"
+                          value={manualDetails.year}
+                          onChange={(e) => setManualDetails({...manualDetails, year: e.target.value})}
+                          placeholder="E.g., 2024"
+                          className="h-12 border-neutral-700 bg-neutral-950/60 text-neutral-100 placeholder:text-neutral-500"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleManualSubmit}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25"
+                      >
+                        Continue
+                      </Button>
+                    </div>
+                  ) : userDetails ? (
+                    /* Existing flow for university students */
                     <div className="space-y-6">
                       <div className="grid gap-4">
                         <div className="space-y-1">
@@ -292,7 +403,7 @@ export default function ConfirmDetailsPage() {
                           variant="outline"
                           className="flex-1 border-neutral-700 text-neutral-300 hover:bg-neutral-800"
                         >
-                          No, something’s wrong
+                          No, something's wrong
                         </Button>
                         <Button
                           onClick={handleYesContinue}
@@ -303,9 +414,10 @@ export default function ConfirmDetailsPage() {
                       </div>
                     </div>
                   ) : rollNumberNotFound ? (
+                    /* Roll number not found flow */
                     <div className="space-y-5">
                       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                        We couldn’t find a matching roll number. Update it below to continue.
+                        We couldn't find a matching roll number. Update it below to continue.
                       </div>
 
                       <div className="space-y-3">
@@ -353,7 +465,7 @@ export default function ConfirmDetailsPage() {
                               variant="outline"
                               className="flex-1 border-neutral-700 text-neutral-300 hover:bg-neutral-800"
                             >
-                              Yes, it’s correct
+                              Yes, it's correct
                             </Button>
                             <Button
                               onClick={handleRollNumberConfirmNo}

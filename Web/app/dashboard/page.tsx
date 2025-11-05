@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, type MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import Script from "next/script"
 import { flushSync } from "react-dom"
@@ -24,6 +24,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import {
   CheckCircle,
   Clock,
@@ -165,21 +170,33 @@ function useTheme() {
   return { theme, toggleTheme, toggleRef, isTransitioning, setTheme }
 }
 
+interface SubEvent {
+  id: string
+  name: string
+  description: string
+  venue: string
+  maxParticipants?: number
+  isActive: boolean
+  participantCount?: number
+}
+
 interface User {
   id: string
   name: string
   email?: string
   rollNumber: string
   courseAndSemester: string
-  registrationStatus: "pending" | "details_confirmed" | "confirmed"
+  registrationStatus: "pending" | "details_confirmed" | "subevent_selected" | "confirmed"
   paymentStatus: "pending" | "completed"
   transactionId?: string
+  paymentAmount?: number
 }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [animating, setAnimating] = useState(false)
+  const [documentLoading, setDocumentLoading] = useState(false)
   const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [paymentError, setPaymentError] = useState("")
@@ -189,6 +206,12 @@ export default function DashboardPage() {
   const [allowDrawerClose, setAllowDrawerClose] = useState(true)
   const router = useRouter()
   const { theme, toggleTheme: _toggleTheme, toggleRef: _toggleRef, isTransitioning: _isTransitioning, setTheme } = useTheme()
+
+  // Subevent selection state
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([])
+  const [selectedSubEvent, setSelectedSubEvent] = useState<string>("")
+  const [subeventLoading, setSubeventLoading] = useState(false)
+  const [subeventError, setSubeventError] = useState("")
 
   const simpleToggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark"
@@ -220,6 +243,22 @@ export default function DashboardPage() {
           localStorage.setItem("verifiedEmail", statusData.email)
           router.push("/confirm-details")
           return
+        }
+
+        if (statusData.needsSubEventSelection) {
+          // User needs to select a subevent - load subevents instead of redirecting
+          try {
+            const subeventsResponse = await fetch("/api/subevents")
+            if (subeventsResponse.ok) {
+              const subeventsData = await subeventsResponse.json()
+              setSubEvents(subeventsData)
+            } else {
+              setSubeventError("Failed to load subevents. Please refresh the page.")
+            }
+          } catch (error) {
+            console.error("Error fetching subevents:", error)
+            setSubeventError("Failed to load subevents. Please refresh the page.")
+          }
         }
       }
 
@@ -437,18 +476,36 @@ export default function DashboardPage() {
   }, [closePaymentDrawer, paymentLoading])
 
   const handleDownloadRegistration = async () => {
-    const token = localStorage.getItem("authToken")
-    const response = await fetch("/api/documents/registration", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    if (documentLoading) return
 
-    if (response.ok) {
+    try {
+      setDocumentLoading(true)
+      const token = localStorage.getItem("authToken")
+      if (!token) {
+        router.push("/")
+        return
+      }
+
+      const response = await fetch("/api/documents/registration", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!response.ok) {
+        console.error("Failed to download document")
+        return
+      }
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
       a.download = "registration-document.pdf"
       a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Error downloading document", error)
+    } finally {
+      setDocumentLoading(false)
     }
   }
 
@@ -463,13 +520,22 @@ export default function DashboardPage() {
           label: "Confirmed",
           description: "Registration Complete"
         }
+      case "subevent_selected":
+        return {
+          icon: Clock,
+          color: "text-blue-400",
+          bgColor: "bg-blue-900/20",
+          borderColor: "border-blue-700/50",
+          label: "Payment Pending",
+          description: "Subevent Selected"
+        }
       case "details_confirmed":
         return {
           icon: Clock,
           color: "text-orange-400",
           bgColor: "bg-orange-900/20",
           borderColor: "border-orange-700/50",
-          label: "Payment Pending",
+          label: "Subevent Selection Pending",
           description: "Details Confirmed"
         }
       default:
@@ -512,6 +578,82 @@ export default function DashboardPage() {
     }
   }, [showPaymentDrawer, handleDismissPaymentDrawer])
 
+  const handleSubeventSubmit = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+
+    if (subeventLoading) return
+
+    if (!selectedSubEvent) {
+      setSubeventError("Please select a subevent before continuing.")
+      return
+    }
+
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    setSubeventLoading(true)
+    setSubeventError("")
+
+    try {
+      const res = await fetch("/api/user/select-subevent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ subEventId: selectedSubEvent }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        // Prefer server-provided error message
+        setSubeventError(data.error || "Failed to select subevent. Please try again.")
+        return
+      }
+
+      // Update user state from server if returned, otherwise update minimal fields locally
+      if (data.user) {
+        setUser(data.user)
+      } else {
+        setUser((prev) => (prev ? { ...prev, registrationStatus: "subevent_selected" } : prev))
+      }
+
+      // If server returned updated subevent info, update subEvents list, otherwise optimistically increment participantCount
+      if (data.updatedSubevent) {
+        setSubEvents((prev) => prev.map((s) => (s.id === data.updatedSubevent.id ? data.updatedSubevent : s)))
+      } else {
+        setSubEvents((prev) =>
+          prev.map((s) =>
+            s.id === selectedSubEvent
+              ? { ...s, participantCount: (s.participantCount || 0) + 1 }
+              : s
+          )
+        )
+      }
+
+      // Proceed to payment flow
+      openPaymentDrawer()
+    } catch (error) {
+      console.error("Subevent selection error:", error)
+      setSubeventError("An unexpected error occurred. Please try again.")
+    } finally {
+      setSubeventLoading(false)
+    }
+  }, [selectedSubEvent, subeventLoading, router, openPaymentDrawer, setSubEvents, setUser])
+
+  // Define status config with defaults
+  let statusConfig = getStatusConfig("pending")
+  let StatusIcon = statusConfig.icon
+
+  if (user) {
+    statusConfig = getStatusConfig(user.registrationStatus)
+    StatusIcon = statusConfig.icon
+  }
+
   if (!user) {
     return (
       <LoadingTransition isLoading={loading}>
@@ -529,9 +671,6 @@ export default function DashboardPage() {
       </LoadingTransition>
     )
   }
-
-  const statusConfig = getStatusConfig(user.registrationStatus)
-  const StatusIcon = statusConfig.icon
 
   return (
     <LoadingTransition isLoading={loading}>
@@ -642,10 +781,102 @@ export default function DashboardPage() {
         {user.registrationStatus === "details_confirmed" && user.paymentStatus !== "completed" && (
           <div className="max-w-6xl mx-auto px-3 sm:px-4">
             <div className="mb-4">
+              <Card className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-lg border border-blue-200/50 dark:border-blue-700/50">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                    Select Your Subevent
+                  </CardTitle>
+                  <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                    Choose one subevent to participate in. This selection is mandatory to proceed with payment.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {subeventError && (
+                    <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-600 dark:text-red-400">
+                      {subeventError}
+                    </div>
+                  )}
+
+                  {subEvents.length > 0 ? (
+                    <RadioGroup value={selectedSubEvent} onValueChange={setSelectedSubEvent} className="space-y-3">
+                      {subEvents.map((subEvent) => (
+                        <div key={subEvent.id} className="flex items-start space-x-3">
+                          <RadioGroupItem
+                            value={subEvent.id}
+                            id={subEvent.id}
+                            className="mt-1 text-blue-400 border-neutral-600"
+                          />
+                          <Label
+                            htmlFor={subEvent.id}
+                            className="flex-1 cursor-pointer rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/60 p-4 hover:bg-neutral-100/80 dark:hover:bg-neutral-700/60 transition-colors"
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between">
+                                <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                                  {subEvent.name}
+                                </h3>
+                                {subEvent.maxParticipants && (
+                                  <Badge
+                                    variant={subEvent.participantCount && subEvent.participantCount >= subEvent.maxParticipants ? "destructive" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {subEvent.participantCount || 0}/{subEvent.maxParticipants} spots
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                                {subEvent.description}
+                              </p>
+                              <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+                                <span>📍 {subEvent.venue}</span>
+                                {subEvent.maxParticipants && (
+                                  <span>
+                                    👥 Max {subEvent.maxParticipants} participants
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  ) : (
+                    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/60 px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+                      No subevents are currently available. Please contact support.
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      onClick={handleSubeventSubmit}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={subeventLoading || !selectedSubEvent}
+                    >
+                      {subeventLoading ? "Selecting..." : "Continue to Payment"}
+                    </Button>
+                  </div>
+
+                  <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/60 px-4 py-3 text-xs text-neutral-600 dark:text-neutral-400">
+                    <p className="mb-2 font-medium">📋 Important Notes:</p>
+                    <ul className="space-y-1">
+                      <li>• You can only participate in one subevent</li>
+                      <li>• Selection cannot be changed after payment</li>
+                      <li>• Some subevents have limited capacity</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {user.registrationStatus === "subevent_selected" && user.paymentStatus !== "completed" && (
+          <div className="max-w-6xl mx-auto px-3 sm:px-4">
+            <div className="mb-4">
               <div className="rounded-lg border border-blue-200 dark:border-blue-700/40 bg-blue-50 dark:bg-blue-900/20 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300">Your registration is pending</h3>
-                  <p className="text-sm text-neutral-700 dark:text-neutral-300">Your details are confirmed — complete the payment to finish registration.</p>
+                  <p className="text-sm text-neutral-700 dark:text-neutral-300">Your subevent is selected — complete the payment to finish registration.</p>
                 </div>
                 <div className="flex-shrink-0 w-full sm:w-auto">
                   <Button onClick={handleConfirmRegistration} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
@@ -683,19 +914,31 @@ export default function DashboardPage() {
                     <div className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Roll Number</div>
                     <div className="font-bold text-neutral-900 dark:text-neutral-100 break-words">{user.rollNumber}</div>
                   </div>
-                  <div className="text-left sm:text-right">
-                    <div className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Course & Semester</div>
-                    <div className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300">{user.courseAndSemester}</div>
-                  </div>
+                  {user.courseAndSemester && (
+                    <div className="text-left sm:text-right">
+                      <div className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Course & Semester</div>
+                      <div className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300">{user.courseAndSemester}</div>
+                    </div>
+                  )}
                   {user.registrationStatus === "confirmed" && (
                     <div className="sm:text-right">
                       <Button
                         onClick={handleDownloadRegistration}
                         size="sm"
-                        className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25"
+                        disabled={documentLoading}
+                        className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-80 disabled:hover:bg-purple-600"
                       >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Download Document
+                        {documentLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Preparing...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Download Document
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
@@ -725,7 +968,7 @@ export default function DashboardPage() {
                     variant="default"
                     className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700/50 shadow-sm"
                   >
-                    ₹200 Paid
+                    ₹{user.paymentAmount || paymentAmount} Paid
                   </Badge>
                 </div>
                 <div className="space-y-4">
@@ -736,7 +979,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 dark:text-neutral-400">Amount</div>
-                      <div className="font-medium text-slate-800 dark:text-neutral-100">₹200</div>
+                      <div className="font-medium text-slate-800 dark:text-neutral-100">₹{user.paymentAmount || paymentAmount}</div>
                     </div>
                     {user.transactionId && (
                       <div className="col-span-2">
@@ -764,32 +1007,34 @@ export default function DashboardPage() {
     </div>
 
         <Drawer open={showPaymentDrawer} onOpenChange={handleDrawerOpenChange}>
-          <DrawerContent className="h-[96vh] max-h-none">
-            <div className="mx-auto w-full max-w-5xl h-full overflow-auto flex flex-col">
+          <DrawerContent className="max-h-[90vh] w-[66vw] max-w-4xl mx-auto">
+            <div className="flex flex-col min-h-0">
               {paymentSuccess ? (
                 <>
-                  <DrawerHeader>
-                    <DrawerTitle className="text-center text-2xl">Payment Successful!</DrawerTitle>
-                    <DrawerDescription className="text-center">
+                  <DrawerHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
+                    <DrawerTitle className="text-center text-2xl font-bold">Payment Successful!</DrawerTitle>
+                    <DrawerDescription className="text-center text-neutral-600 dark:text-neutral-400 mt-2">
                       Your registration is confirmed. You can close this window to return to the dashboard.
                     </DrawerDescription>
                   </DrawerHeader>
-                  <div className="p-4 pb-0 space-y-6">
-                    <div className="flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-500 dark:bg-green-400/20 dark:text-green-300 flex items-center justify-center">
-                        <CheckCircle className="w-8 h-8" />
-                      </div>
+                  <div className="px-8 py-8 flex-1 flex flex-col items-center justify-center space-y-6">
+                    <div className="w-20 h-20 rounded-full bg-green-500/10 dark:bg-green-400/20 flex items-center justify-center">
+                      <CheckCircle className="w-10 h-10 text-green-500 dark:text-green-300" />
                     </div>
                     {user.transactionId && (
-                      <div className="bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700/60 rounded-xl p-4 text-sm text-neutral-600 dark:text-neutral-300">
-                        Transaction ID:{" "}
-                        <span className="font-mono text-xs sm:text-sm text-neutral-900 dark:text-neutral-100">{user.transactionId}</span>
+                      <div className="bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700/60 rounded-xl p-4 max-w-md">
+                        <div className="text-sm text-neutral-600 dark:text-neutral-300 text-center">
+                          Transaction ID
+                        </div>
+                        <div className="font-mono text-sm text-neutral-900 dark:text-neutral-100 text-center mt-1 break-all">
+                          {user.transactionId}
+                        </div>
                       </div>
                     )}
                   </div>
-                  <DrawerFooter>
+                  <DrawerFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700">
                     <DrawerClose asChild>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3">
                         Back to Dashboard
                       </Button>
                     </DrawerClose>
@@ -797,39 +1042,39 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <>
-                  <DrawerHeader>
-                    <DrawerTitle>Complete Your Payment</DrawerTitle>
-                    <DrawerDescription>
+                  <DrawerHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
+                    <DrawerTitle className="text-xl font-bold">Complete Your Payment</DrawerTitle>
+                    <DrawerDescription className="text-neutral-600 dark:text-neutral-400 mt-1">
                       Secure payment for IDEAS 3.0 registration
                     </DrawerDescription>
                   </DrawerHeader>
-                  <div className="p-4 pb-0 space-y-6">
-                    <div className="max-w-2xl mx-auto space-y-5">
-                      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700/60 bg-neutral-50 dark:bg-neutral-900/60 p-4 sm:p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Amount Due</p>
-                            <p className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50">₹{paymentAmount}</p>
-                            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">IDEAS 3.0 Registration Fee</p>
+                  <div className="px-8 py-8 flex-1">
+                    <div className="max-w-2xl mx-auto space-y-8">
+                      <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900/60 dark:to-neutral-800/60 rounded-2xl border border-neutral-200 dark:border-neutral-700/60 p-6 shadow-sm">
+                        <div className="flex items-start justify-between gap-6">
+                          <div className="flex-1">
+                            <p className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium mb-2">Amount Due</p>
+                            <p className="text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-1">₹{paymentAmount}</p>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400">IDEAS 3.0 Registration Fee</p>
                           </div>
-                          <Badge className="bg-green-500/10 text-green-600 dark:bg-green-400/20 dark:text-green-200 border border-green-500/30">
+                          <Badge className="bg-green-500/10 text-green-600 dark:bg-green-400/20 dark:text-green-200 border border-green-500/30 font-medium px-3 py-1">
                             One-time Payment
                           </Badge>
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Payment Breakdown</h3>
-                        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700/50 divide-y divide-neutral-200 dark:divide-neutral-700/60 overflow-hidden">
-                          <div className="flex items-center justify-between bg-white dark:bg-neutral-800/80 px-4 py-3">
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-lg">Payment Breakdown</h3>
+                        <div className="bg-white dark:bg-neutral-800/60 rounded-xl border border-neutral-200 dark:border-neutral-700/50 divide-y divide-neutral-200 dark:divide-neutral-700/60 shadow-sm overflow-hidden">
+                          <div className="flex items-center justify-between px-6 py-4">
                             <span className="text-sm text-neutral-600 dark:text-neutral-300">Registration Fee</span>
                             <span className="font-medium text-neutral-900 dark:text-neutral-50">₹{paymentAmount}</span>
                           </div>
-                          <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-900/40 px-4 py-3">
+                          <div className="flex items-center justify-between px-6 py-4 bg-neutral-50/50 dark:bg-neutral-900/30">
                             <span className="text-sm text-neutral-600 dark:text-neutral-300">Taxes & Convenience</span>
                             <span className="font-medium text-neutral-900 dark:text-neutral-50">Included</span>
                           </div>
-                          <div className="flex items-center justify-between bg-neutral-100 dark:bg-neutral-900/60 px-4 py-3">
+                          <div className="flex items-center justify-between px-6 py-4 bg-neutral-100/50 dark:bg-neutral-900/50">
                             <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">Total Payable</span>
                             <span className="text-lg font-bold text-neutral-900 dark:text-neutral-50">₹{paymentAmount}</span>
                           </div>
@@ -837,16 +1082,32 @@ export default function DashboardPage() {
                       </div>
 
                       {paymentError && (
-                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg">
-                          {paymentError}
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-sm p-4 rounded-lg">
+                          {paymentError.includes("Please try again") ? (
+                            <>
+                              Payment cancelled.{" "}
+                              <button
+                                onClick={() => {
+                                  setPaymentError("")
+                                  handleInitiatePayment()
+                                }}
+                                className="text-red-700 dark:text-red-300 underline hover:text-red-800 dark:hover:text-red-200 font-medium"
+                              >
+                                Please try again
+                              </button>
+                              .
+                            </>
+                          ) : (
+                            paymentError
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
-                  <DrawerFooter className="pt-4">
+                  <DrawerFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700 space-y-6">
                     <Button
                       onClick={handleInitiatePayment}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 text-base"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                       disabled={paymentLoading || !razorpayLoaded}
                     >
                       {paymentLoading ? (
@@ -867,19 +1128,23 @@ export default function DashboardPage() {
                       )}
                     </Button>
                     
-                    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/40 p-4 space-y-2">
-                      <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Need Help?</h4>
-                      <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
+                    <div className="bg-neutral-50 dark:bg-neutral-900/40 border border-neutral-200 dark:border-neutral-700/50 rounded-xl p-5">
+                      <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Need Help?</h4>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
                         If your payment doesn&apos;t reflect within a few minutes, keep your payment reference handy and contact support.
                       </p>
                     </div>
 
-                    <p className="text-xs text-center text-neutral-500 dark:text-neutral-400 pt-2">
-                      By proceeding, you agree to our terms and conditions.
-                    </p>
+                    <div className="text-center">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        By proceeding, you agree to our terms and conditions.
+                      </p>
+                    </div>
 
                     <DrawerClose asChild>
-                      <Button variant="outline" disabled={paymentLoading}>Cancel</Button>
+                      <Button variant="outline" disabled={paymentLoading} className="w-full border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                        Cancel
+                      </Button>
                     </DrawerClose>
                   </DrawerFooter>
                 </>

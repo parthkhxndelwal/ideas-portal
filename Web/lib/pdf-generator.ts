@@ -3,6 +3,7 @@ import * as QRCode from "qrcode";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { encrypt } from "./crypto";
+import { calculateYearFromCourseAndSemester } from "./utils";
 import type { User } from "./models";
 
 interface GeneratePdfOptions {
@@ -39,15 +40,21 @@ export async function generateRegistrationPDF(user: User, options: GeneratePdfOp
   const yearY = courseY - spaceBetween;
   const textSize = 32;
   const textColor = rgb(32 / 255, 28 / 255, 163 / 255);
+  // Calculate year if not available
+  let displayYear = user.year?.toString() || "";
+  if (!displayYear) {
+    displayYear = calculateYearFromCourseAndSemester(user.courseAndSemester || "")
+  }
+
   // 6. Add text to the page
   firstPage.drawText(user.name || "", { x: marginLeft, y: nameY, size: textSize, font: helveticaFont, color: textColor });
   firstPage.drawText(user.rollNumber || "", { x: marginLeft, y: rollY, size: textSize, font: helveticaFont, color: textColor });
   firstPage.drawText(user.courseAndSemester || "", { x: marginLeft, y: courseY, size: textSize, font: helveticaFont, color: textColor });
-  firstPage.drawText(user.year?.toString() || "", { x: marginLeft, y: yearY, size: textSize, font: helveticaFont, color: textColor });
+  firstPage.drawText(displayYear, { x: marginLeft, y: yearY, size: textSize, font: helveticaFont, color: textColor });
 
-  // 7. Generate encrypted QR code
-  const transactionId = user.transactionId ?? `manual-${user.rollNumber}`
-  const qrData = `participant_ideas3.0_${user.rollNumber}_${transactionId}`;
+  // 7. Generate encrypted QR code based on transaction ID only
+  const transactionId = user.transactionId ?? `TXN_${Date.now()}`
+  const qrData = `participant_ideas3.0_${transactionId}`;
   const encryptedQrData = await encrypt(qrData);
   const qrCodeDataURL = await QRCode.toDataURL(encryptedQrData, { width: 150 });
 

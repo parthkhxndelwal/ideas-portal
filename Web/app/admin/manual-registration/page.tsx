@@ -1,42 +1,151 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Eye, EyeOff, Upload, Download } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { UserPlus, Upload, Download, CheckCircle, XCircle, Info } from "lucide-react"
 import AdminLayout from "@/components/admin/AdminLayout"
 import { toast } from "@/components/ui/use-toast"
 
 export default function ManualRegistrationPage() {
-  const [formData, setFormData] = useState({
-    rollNumber: "",
-    email: "",
-    password: "",
-    name: "",
-    course: "",
-    semester: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
+  const [subEvents, setSubEvents] = useState<Array<{id: string, name: string, maxParticipants?: number, participantCount?: number}>>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
   const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkError, setBulkError] = useState("")
   const [bulkSuccess, setBulkSuccess] = useState("")
+  const [registrationSuccess, setRegistrationSuccess] = useState("")
+  const [registrationError, setRegistrationError] = useState("")
+  const [rollNumberValidating, setRollNumberValidating] = useState(false)
+  const [rollNumberError, setRollNumberError] = useState("")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setSuccess("")
+  const form = useForm({
+    defaultValues: {
+      rollNumber: "",
+      email: "",
+      name: "",
+      course: "",
+      semester: "",
+      transactionId: "",
+      isFromUniversity: true,
+      selectedSubEvent: "",
+      paymentMethod: "Paytm",
+      customPaymentMethod: "",
+    },
+    mode: "onChange"
+  })
+
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = form
+  const isFromUniversity = watch("isFromUniversity")
+  const paymentMethod = watch("paymentMethod")
+
+  useEffect(() => {
+    // Register selectedSubEvent validation
+    register("selectedSubEvent", { 
+      required: "Please select a subevent",
+      validate: (value) => {
+        if (!value || value === "") {
+          return "Please select a subevent"
+        }
+        return true
+      }
+    })
+  }, [register])
+
+  useEffect(() => {
+    loadSubEvents()
+  }, [])
+
+  // Validate roll number when it changes and university checkbox is ticked
+  useEffect(() => {
+    const rollNumber = watch("rollNumber")
+    if (rollNumber && isFromUniversity) {
+      const timeoutId = setTimeout(() => {
+        validateRollNumber(rollNumber, isFromUniversity)
+      }, 500) // Debounce validation
+
+      return () => clearTimeout(timeoutId)
+    } else {
+      setRollNumberError("")
+    }
+  }, [watch("rollNumber"), isFromUniversity])
+
+  const loadSubEvents = async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const response = await fetch("/api/admin/subevents", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setSubEvents(data)
+      }
+    } catch (error) {
+      console.error("Error loading subevents:", error)
+    }
+  }
+
+  const validateRollNumber = async (rollNumber: string, isFromUniversity: boolean) => {
+    if (!rollNumber || !isFromUniversity) {
+      setRollNumberError("")
+      return
+    }
+
+    setRollNumberValidating(true)
+    setRollNumberError("")
 
     try {
       const token = localStorage.getItem("authToken")
+      const response = await fetch(`/api/admin/validate-roll-number?rollNumber=${encodeURIComponent(rollNumber)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (!data.exists) {
+          setRollNumberError("Roll number not found in KR Mangalam University database")
+        } else {
+          setRollNumberError("")
+        }
+      } else {
+        setRollNumberError("Unable to validate roll number")
+      }
+    } catch (error) {
+      console.error("Error validating roll number:", error)
+      setRollNumberError("Unable to validate roll number")
+    } finally {
+      setRollNumberValidating(false)
+    }
+  }
+
+  const onSubmit = async (data: any) => {
+    setLoading(true)
+    setRegistrationSuccess("")
+    setRegistrationError("")
+
+    // Check roll number validation for university students
+    if (data.isFromUniversity && rollNumberError) {
+      setRegistrationError("Please fix the roll number validation error before submitting")
+      setLoading(false)
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("authToken")
+      
+      // Generate default password: participant#emailBefore@
+      const emailUsername = data.email.split('@')[0]
+      const defaultPassword = `participant#${emailUsername}`
+      
       const response = await fetch("/api/admin/manual-registration", {
         method: "POST",
         headers: {
@@ -44,8 +153,10 @@ export default function ManualRegistrationPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...formData,
-          courseAndSemester: `${formData.course} ${formData.semester}`,
+          ...data,
+          password: defaultPassword,
+          courseAndSemester: `${data.course} ${data.semester}`,
+          paymentMethod: data.paymentMethod === "Custom" ? data.customPaymentMethod : data.paymentMethod,
         }),
       })
 
@@ -56,25 +167,30 @@ export default function ManualRegistrationPage() {
         const transactionMessage = result.transactionId ? ` Transaction ID: ${result.transactionId}.` : ""
         const displayMessage = `${baseMessage}${transactionMessage}`
 
-        setSuccess(displayMessage)
-        setFormData({
-          rollNumber: "",
-          email: "",
-          password: "",
-          name: "",
-          course: "",
-          semester: "",
-        })
+        setRegistrationSuccess(displayMessage)
         toast({
           title: "Registration complete",
           description: displayMessage,
         })
+        reset()
       } else {
-        setError(result.error || "Registration failed")
+        const errorMessage = result.error || "Registration failed"
+        setRegistrationError(errorMessage)
+        toast({
+          title: "Registration failed",
+          description: errorMessage,
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Manual registration failed", error)
-      setError("An error occurred. Please try again.")
+      const errorMessage = "An error occurred. Please try again."
+      setRegistrationError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -121,9 +237,10 @@ export default function ManualRegistrationPage() {
 
   const handleDownloadSample = () => {
     const sampleCsv = [
-      "Name,Roll Number,Email,Password,Course,Semester",
-      "John Doe,2023IT001,john@example.com,Temp@123,B.Tech CSE,5",
-      "Jane Smith,2023IT002,jane@example.com,Temp@456,B.Tech CSE,5",
+      "Name,Roll Number,Email,Course,Semester,Transaction ID,Is From University,Selected Sub Event,Payment Method",
+      "John Doe,2023IT001,john@example.com,B.Tech CSE,5,TXN001,true,subevent_123,Paytm",
+      "Jane Smith,2023IT002,jane@example.com,B.Tech CSE,5,TXN002,true,subevent_456,Cash",
+      "External User,EXT001,external@example.com,,,TXN003,false,subevent_789,Paytm",
     ].join("\n")
 
     const blob = new Blob([sampleCsv], { type: "text/csv" })
@@ -139,125 +256,254 @@ export default function ManualRegistrationPage() {
 
   return (
     <AdminLayout title="Manual Student Registration" showBackButton>
-      {/* 🎯 Page Title */}
-      <h1 className="text-3xl font-bold text-center mb-8 text-neutral-900 dark:text-neutral-100">Manual Student Registration</h1>
+      {/* Page Title */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold">Manual Student Registration</h1>
+        <p className="text-muted-foreground mt-2">
+          Register individual students with automatic email delivery and QR code generation
+        </p>
+      </div>
 
-      <Card className="bg-white/80 dark:bg-neutral-900/70 backdrop-blur-md shadow-lg border border-neutral-200/50 dark:border-neutral-700/50 max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5" />
             Register Student
           </CardTitle>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Register a student manually by entering their details. Payment is recorded automatically and the participant receives their credentials, QR code, and entry document.</p>
+          <p className="text-sm text-muted-foreground">
+            Fill in the participant details below. Password will be auto-generated and credentials sent via email.
+          </p>
         </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent>
+          {registrationSuccess && (
+            <Alert className="mb-6">
+              <CheckCircle className="h-4 w-4" />
+              <AlertTitle>Registration Successful</AlertTitle>
+              <AlertDescription>{registrationSuccess}</AlertDescription>
+            </Alert>
+          )}
+
+          {registrationError && (
+            <Alert variant="destructive" className="mb-6">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Registration Failed</AlertTitle>
+              <AlertDescription>{registrationError}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* University Checkbox */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isFromUniversity"
+                checked={isFromUniversity}
+                onCheckedChange={(checked) => setValue("isFromUniversity", !!checked)}
+              />
+              <Label htmlFor="isFromUniversity" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                From KR Mangalam University
+              </Label>
+            </div>
+
             {/* Name and Roll Number */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Name</Label>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
-                  required
+                  {...register("name", { required: "Name is required" })}
+                  placeholder="Enter full name"
                 />
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
               </div>
-              <div>
-                <Label htmlFor="rollNumber" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Roll Number</Label>
-                <Input
-                  id="rollNumber"
-                  type="text"
-                  value={formData.rollNumber}
-                  onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
-                  className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
-                  required
-                />
+              <div className="space-y-2">
+                <Label htmlFor="rollNumber">Roll Number</Label>
+                <div className="relative">
+                  <Input
+                    id="rollNumber"
+                    {...register("rollNumber", { required: "Roll number is required" })}
+                    placeholder="e.g., 2023IT001"
+                    className={rollNumberError ? "border-red-500" : ""}
+                  />
+                  {rollNumberValidating && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    </div>
+                  )}
+                </div>
+                {errors.rollNumber && (
+                  <p className="text-sm text-destructive">{errors.rollNumber.message}</p>
+                )}
+                {rollNumberError && (
+                  <p className="text-sm text-destructive">{rollNumberError}</p>
+                )}
+                {isFromUniversity && !rollNumberError && watch("rollNumber") && !rollNumberValidating && (
+                  <p className="text-sm text-green-600">✓ Roll number validated</p>
+                )}
               </div>
             </div>
 
+            {/* Transaction ID */}
+            <div className="space-y-2">
+              <Label htmlFor="transactionId">Transaction ID</Label>
+              <Input
+                id="transactionId"
+                {...register("transactionId", { required: "Transaction ID is required" })}
+                placeholder="Enter unique transaction ID"
+              />
+              {errors.transactionId && (
+                <p className="text-sm text-destructive">{errors.transactionId.message}</p>
+              )}
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select 
+                value={watch("paymentMethod")} 
+                onValueChange={(value) => {
+                  setValue("paymentMethod", value)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Paytm">Paytm</SelectItem>
+                  <SelectItem value="Custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Payment Method - Conditional */}
+            {paymentMethod === "Custom" && (
+              <div className="space-y-2">
+                <Label htmlFor="customPaymentMethod">Custom Payment Method</Label>
+                <Input
+                  id="customPaymentMethod"
+                  {...register("customPaymentMethod", { 
+                    required: paymentMethod === "Custom" ? "Custom payment method is required" : false 
+                  })}
+                  placeholder="e.g., Cash, Card, Bank Transfer"
+                />
+                {errors.customPaymentMethod && (
+                  <p className="text-sm text-destructive">{errors.customPaymentMethod.message}</p>
+                )}
+              </div>
+            )}
+
             {/* Email */}
-            <div>
-              <Label htmlFor="email" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Email</Label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
-                required
+                {...register("email", { 
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: "Please enter a valid email address"
+                  }
+                })}
+                placeholder="participant@example.com"
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Password will be auto-generated as: participant#[email username]
+              </p>
             </div>
 
-            {/* Password */}
-            <div>
-              <Label htmlFor="password" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600 pr-10"
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Course and Semester */}
+            {/* Course and Semester - Conditional for non-university */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="course" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Course</Label>
+              <div className="space-y-2">
+                <Label htmlFor="course">
+                  Course {isFromUniversity ? "" : "(Optional)"}
+                </Label>
                 <Input
                   id="course"
-                  type="text"
-                  value={formData.course}
-                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                  className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
-                  required
+                  {...register("course", { 
+                    required: isFromUniversity ? "Course is required for university students" : false 
+                  })}
+                  placeholder="e.g., B.Tech CSE"
                 />
+                {errors.course && (
+                  <p className="text-sm text-destructive">{errors.course.message}</p>
+                )}
               </div>
-              <div>
-                <Label htmlFor="semester" className="text-neutral-700 dark:text-neutral-300 mb-2 block">Semester</Label>
+              <div className="space-y-2">
+                <Label htmlFor="semester">
+                  Semester {isFromUniversity ? "" : "(Optional)"}
+                </Label>
                 <Input
                   id="semester"
-                  type="text"
-                  value={formData.semester}
-                  onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                  className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
-                  required
+                  {...register("semester", { 
+                    required: isFromUniversity ? "Semester is required for university students" : false 
+                  })}
+                  placeholder="e.g., 5"
                 />
+                {errors.semester && (
+                  <p className="text-sm text-destructive">{errors.semester.message}</p>
+                )}
               </div>
             </div>
 
-            {error && <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">{error}</div>}
-
-            {success && <div className="text-green-600 dark:text-green-400 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800">{success}</div>}
+            {/* Subevent Selection - REQUIRED */}
+            <div className="space-y-2">
+              <Label htmlFor="selectedSubEvent">Subevent</Label>
+              <Select 
+                value={watch("selectedSubEvent")} 
+                onValueChange={(value) => {
+                  setValue("selectedSubEvent", value, { shouldValidate: true })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a subevent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subEvents.map((subEvent) => {
+                    const isAtCapacity = subEvent.maxParticipants && subEvent.participantCount !== undefined && subEvent.participantCount >= subEvent.maxParticipants
+                    
+                    return (
+                      <SelectItem 
+                        key={subEvent.id} 
+                        value={subEvent.id}
+                        disabled={!!isAtCapacity}
+                      >
+                        {subEvent.name} 
+                        {subEvent.maxParticipants 
+                          ? ` (${subEvent.participantCount || 0}/${subEvent.maxParticipants})` 
+                          : " (Unlimited)"
+                        }
+                        {isAtCapacity ? " - FULL" : ""}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+              {errors.selectedSubEvent && (
+                <p className="text-sm text-destructive">{errors.selectedSubEvent.message}</p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                All participants must select a subevent. Full subevents are disabled.
+              </p>
+            </div>
 
             <div className="flex gap-4">
               <Button 
                 type="button" 
                 onClick={() => router.push("/admin")} 
                 variant="outline" 
-                className="flex-1 border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                className="flex-1"
               >
                 Back
               </Button>
               <Button 
                 type="submit" 
-                className="flex-1 bg-blue-100 border border-blue-400 hover:bg-blue-200 dark:bg-blue-950 dark:border-blue-900 dark:hover:bg-blue-700 text-blue-900 dark:text-blue-100 cursor-pointer" 
-                disabled={loading}
+                className="flex-1" 
+                disabled={loading || (isFromUniversity && (rollNumberValidating || !!rollNumberError))}
               >
                 {loading ? "Registering..." : "Register & Send Email"}
               </Button>
@@ -266,23 +512,38 @@ export default function ManualRegistrationPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white/80 dark:bg-neutral-900/70 backdrop-blur-md shadow-lg border border-neutral-200/50 dark:border-neutral-700/50 max-w-2xl mx-auto mt-8">
+      <div className="flex items-center gap-4 my-8 max-w-2xl mx-auto">
+        <Separator className="flex-1" />
+        <span className="text-sm text-muted-foreground font-medium">OR</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
             Bulk Upload Students
           </CardTitle>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Upload a CSV file to register multiple students. Use the sample template (Name, Roll Number, Email, Password, Course, Semester). Each entry is validated, payment recorded automatically, and email sent individually.</p>
+          <p className="text-sm text-muted-foreground">
+            Upload a CSV file to register multiple students at once. Each registration will be validated and processed individually.
+          </p>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleBulkUpload}
-            ref={fileInputRef}
-            disabled={bulkLoading}
-            className="border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2"
-          />
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="bulk-file">CSV File</Label>
+            <Input
+              id="bulk-file"
+              type="file"
+              accept=".csv"
+              onChange={handleBulkUpload}
+              ref={fileInputRef}
+              disabled={bulkLoading}
+            />
+            <p className="text-sm text-muted-foreground">
+              File should contain: Name, Roll Number, Email, Course, Semester, Transaction ID, Is From University, Selected Sub Event, Payment Method
+            </p>
+          </div>
+
           <Button
             type="button"
             variant="outline"
@@ -292,9 +553,29 @@ export default function ManualRegistrationPage() {
             <Download className="w-4 h-4" /> Download Sample CSV
           </Button>
 
-          {bulkLoading && <p className="text-sm text-neutral-600 dark:text-neutral-300">Processing upload...</p>}
-          {bulkError && <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">{bulkError}</div>}
-          {bulkSuccess && <div className="text-green-600 dark:text-green-400 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800">{bulkSuccess}</div>}
+          {bulkLoading && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Processing...</AlertTitle>
+              <AlertDescription>Processing bulk upload...</AlertDescription>
+            </Alert>
+          )}
+
+          {bulkError && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Upload Failed</AlertTitle>
+              <AlertDescription>{bulkError}</AlertDescription>
+            </Alert>
+          )}
+
+          {bulkSuccess && (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertTitle>Upload Complete</AlertTitle>
+              <AlertDescription>{bulkSuccess}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     </AdminLayout>

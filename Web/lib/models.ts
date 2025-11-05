@@ -4,13 +4,20 @@ export interface User {
   password: string
   role: "participant" | "admin"
   isEmailVerified: boolean
+  isFromUniversity?: boolean // Whether user is from KR Mangalam University
   rollNumber?: string
   name?: string
   courseAndSemester?: string
   year?: string
-  registrationStatus: "pending" | "details_confirmed" | "confirmed"
-  transactionId?: string
+  selectedSubEvent?: string // ID of selected subevent (mandatory for payment)
+  registrationStatus: "pending" | "details_confirmed" | "subevent_selected" | "confirmed"
+  transactionId?: string // Transaction ID is now the primary identifier for QR codes
   paymentStatus: "pending" | "completed"
+  needsPasswordChange?: boolean // Whether user needs to set a password (for manual registrations)
+  // Additional fields for silent bulk registration
+  fatherMotherName?: string
+  contactNumber?: string
+  activityParticipationDate?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -68,16 +75,30 @@ export interface Transaction {
 export interface EventConfig {
   _id?: string
   paymentAmount: number
+  subEvents: SubEvent[]
   updatedAt: Date
   updatedBy: string
 }
 
+export interface SubEvent {
+  _id?: string
+  id: string // Unique identifier for the subevent
+  name: string
+  description: string
+  venue: string
+  maxParticipants?: number // Optional capacity limit
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  participantCount?: number // Current number of participants (added dynamically)
+}
+
 export interface EntryRecord {
   _id?: string
-  rollNumber: string
+  transactionId: string // Primary identifier (was optional, now required)
+  rollNumber?: string // Now optional for backward compatibility
   name: string
   qrType: "participant" | "volunteer"
-  transactionId?: string
   entryDate: Date // Date only (without time) to track daily entries
   entryTimestamp: Date // Full timestamp of entry
   scannedBy: string // Admin who scanned the QR
@@ -100,10 +121,10 @@ export interface ScanRecord {
   _id?: string
   scanId: string // Unique identifier from client for idempotency
   deviceId: string
-  rollNumber: string
+  transactionId: string // Primary identifier (was optional, now required)
+  rollNumber?: string // Now optional for backward compatibility
   name: string
   qrType: "participant" | "volunteer"
-  transactionId?: string
   entryDate: Date
   entryTimestamp: Date
   scannedBy: string

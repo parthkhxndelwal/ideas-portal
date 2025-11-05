@@ -138,6 +138,9 @@ export function LoginForm() {
 
           if (data.user.role === "admin") {
             router.push("/admin")
+          } else if (data.needsPasswordChange) {
+            // User needs to set their password first (manually registered)
+            router.push("/set-password")
           } else if (data.needsDetailsConfirmation) {
             // User is a participant but hasn't confirmed details yet
             localStorage.setItem("verifiedEmail", formData.email)
