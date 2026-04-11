@@ -212,7 +212,7 @@ async function registerParticipant(input: RegisterInput): Promise<RegisterResult
 	}
 
 	// QR code now uses only transaction ID (standardized format)
-	const rawQrData = `participant_ideas3.0_${transactionId}`
+	const rawQrData = `participant_solesta_${transactionId}`
 	const encryptedQrData = encrypt(rawQrData)
 	const qrCodeBuffer = await QRCode.toBuffer(encryptedQrData, { type: "png", width: 300, margin: 2 })
 

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "App",
-    "slug": "App",
+    "name": "Solesta Scanner",
+    "slug": "solesta-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "app",
+    "scheme": "solesta",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -24,7 +24,7 @@
         "android.permission.CAMERA",
         "android.permission.CAMERA"
       ],
-      "package": "com.parrowdev.App"
+      "package": "com.krmangalam.solesta"
     },
     "web": {
       "output": "static",

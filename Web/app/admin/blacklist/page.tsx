@@ -324,7 +324,7 @@ export default function BlacklistManagementPage() {
               Current Blacklist ({blacklistedStudents.length})
             </CardTitle>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Students currently on the blacklist cannot register for IDEAS 3.0
+              Students currently on the blacklist cannot register for Solesta
             </p>
           </CardHeader>
           <CardContent className="p-6">

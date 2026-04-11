@@ -283,8 +283,8 @@ export default function ConfirmDetailsPage() {
                   priority
                 />
                 <Image
-                  src="/ideas-white.png"
-                  alt="IDEAS Logo"
+                  src="/solesta-white.png"
+                  alt="Solesta Logo"
                   width={180}
                   height={52}
                   className="drop-shadow-2xl"
@@ -292,7 +292,7 @@ export default function ConfirmDetailsPage() {
                 />
               </div>
               <p className="text-sm text-neutral-400">
-                {isManualEntry ? "Enter your details to complete registration" : "Verify your academic details to continue with your IDEAS 3.0 registration"}
+                {isManualEntry ? "Enter your details to complete registration" : "Verify your academic details to continue with your Solesta registration"}
               </p>
             </div>
 

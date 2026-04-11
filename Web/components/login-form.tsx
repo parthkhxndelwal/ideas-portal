@@ -151,7 +151,7 @@ export function LoginForm() {
       <div className="transition-all duration-300 ease-in-out">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-neutral-100 mb-2">
-            {isSignUp ? "Register for IDEAS 3.0" : "Welcome Back"}
+            {isSignUp ? "Register for Solesta" : "Welcome Back"}
           </h1>
           <p className="text-sm text-neutral-400">
             Please log in or sign up to Continue

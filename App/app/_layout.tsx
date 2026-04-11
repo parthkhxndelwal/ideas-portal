@@ -15,7 +15,7 @@ export default function RootLayout() {
           <Stack.Screen
             name="index"
             options={{
-              title: "IDEAS Scanner",
+              title: "Solesta Scanner",
             }}
           />
           <Stack.Screen

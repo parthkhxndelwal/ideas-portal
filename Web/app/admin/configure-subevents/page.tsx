@@ -22,6 +22,9 @@ interface SubEvent {
   venue: string
   maxParticipants?: number
   isActive: boolean
+  allowOutsiders: boolean
+  allowedYears?: string[]
+  allowedCourses?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -42,19 +45,41 @@ export default function ConfigureSubEventsPage() {
   const [saving, setSaving] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<SubEvent | null>(null)
+  const [availableYears, setAvailableYears] = useState<string[]>([])
+  const [availableCourses, setAvailableCourses] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     venue: "",
     maxParticipants: "",
-    isActive: true
+    isActive: true,
+    allowOutsiders: false,
+    allowedYears: [] as string[],
+    allowedCourses: [] as string[]
   })
 
   useEffect(() => {
     loadSubEvents()
     loadStats()
+    loadYearsAndCourses()
   }, [])
+
+  const loadYearsAndCourses = async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const response = await fetch("/api/admin/years-courses", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableYears(data.years || [])
+        setAvailableCourses(data.courses || [])
+      }
+    } catch (error) {
+      console.error("Error loading years and courses:", error)
+    }
+  }
 
   const loadSubEvents = async () => {
     try {
@@ -95,7 +120,10 @@ export default function ConfigureSubEventsPage() {
       description: "",
       venue: "",
       maxParticipants: "",
-      isActive: true
+      isActive: true,
+      allowOutsiders: false,
+      allowedYears: "",
+      allowedCourses: ""
     })
     setEditingEvent(null)
   }
@@ -161,7 +189,10 @@ export default function ConfigureSubEventsPage() {
       description: subEvent.description,
       venue: subEvent.venue,
       maxParticipants: subEvent.maxParticipants?.toString() || "",
-      isActive: subEvent.isActive
+      isActive: subEvent.isActive,
+      allowOutsiders: subEvent.allowOutsiders ?? false,
+      allowedYears: subEvent.allowedYears || [],
+      allowedCourses: subEvent.allowedCourses || []
     })
     setDialogOpen(true)
   }
@@ -224,7 +255,7 @@ export default function ConfigureSubEventsPage() {
                 Add Subevent
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
               <form onSubmit={handleSubmit}>
                 <DialogHeader>
                   <DialogTitle>
@@ -298,6 +329,69 @@ export default function ConfigureSubEventsPage() {
                       onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
                     />
                     <Label htmlFor="isActive">Active (visible to participants)</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="allowOutsiders"
+                      checked={formData.allowOutsiders}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allowOutsiders: checked }))}
+                    />
+                    <Label htmlFor="allowOutsiders">Allow Non-KR Mangalam Students</Label>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Allowed Years (Optional)</Label>
+                    <div className="flex flex-wrap gap-2 border border-neutral-200 dark:border-neutral-700 rounded-md p-3 min-h-[80px] max-h-[150px] overflow-y-auto">
+                      {availableYears.length === 0 && <span className="text-sm text-muted-foreground">No years available in database</span>}
+                      {availableYears.map((year) => (
+                        <label key={year} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.allowedYears.includes(year)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({ ...prev, allowedYears: [...prev.allowedYears, year] }))
+                              } else {
+                                setFormData(prev => ({ ...prev, allowedYears: prev.allowedYears.filter(y => y !== year) }))
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{year}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select specific years. Leave empty for all years.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Allowed Courses (Optional)</Label>
+                    <div className="flex flex-wrap gap-2 border border-neutral-200 dark:border-neutral-700 rounded-md p-3 min-h-[80px] max-h-[150px] overflow-y-auto">
+                      {availableCourses.length === 0 && <span className="text-sm text-muted-foreground">No courses available in database</span>}
+                      {availableCourses.map((course) => (
+                        <label key={course} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.allowedCourses.includes(course)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({ ...prev, allowedCourses: [...prev.allowedCourses, course] }))
+                              } else {
+                                setFormData(prev => ({ ...prev, allowedCourses: prev.allowedCourses.filter(c => c !== course) }))
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{course}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select specific courses. Leave empty for all courses.
+                    </p>
                   </div>
                 </div>
 

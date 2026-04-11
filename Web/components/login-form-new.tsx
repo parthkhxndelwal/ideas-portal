@@ -172,7 +172,7 @@ export function LoginForm() {
             : "transform scale-100 translate-y-0 opacity-100"
         }`}>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-neutral-100 mb-2">{isSignUp ? "Register for IDEAS 3.0" : "Welcome Back"}</h1>
+            <h1 className="text-2xl font-bold text-neutral-100 mb-2">{isSignUp ? "Register for Solesta" : "Welcome Back"}</h1>
             <p className="text-sm text-neutral-400">Please log in or sign up to Continue</p>
           </div>
 
@@ -255,7 +255,7 @@ export function LoginForm() {
         {showIncomingForm && (
           <div className="absolute inset-0 transition-all duration-450 ease-out opacity-100 scale-100">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-neutral-100 mb-2">{!isSignUp ? "Register for IDEAS 3.0" : "Welcome Back"}</h1>
+              <h1 className="text-2xl font-bold text-neutral-100 mb-2">{!isSignUp ? "Register for Solesta" : "Welcome Back"}</h1>
               <p className="text-sm text-neutral-400">Please log in or sign up to Continue</p>
             </div>
 

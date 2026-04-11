@@ -85,7 +85,7 @@ export function ConfirmDetailsModal({ email, initialRollNumber, onClose, onSucce
         <DialogHeader className="text-center">
           <div className="flex items-center justify-center gap-4 mb-2">
             <Image src="/kr-logo.png" alt="KR" width={48} height={48} className="rounded-full" />
-            <Image src="/ideas-white.png" alt="IDEAS" width={140} height={36} />
+            <Image src="/solesta-white.png" alt="Solesta" width={140} height={36} />
           </div>
           <DialogTitle className="text-lg text-neutral-50">Verify Roll Number</DialogTitle>
           <DialogDescription className="text-sm text-neutral-400">Check that the entered roll number is correct. If not, correct it.</DialogDescription>

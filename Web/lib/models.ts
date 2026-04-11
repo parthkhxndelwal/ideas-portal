@@ -13,6 +13,7 @@ export interface User {
   registrationStatus: "pending" | "details_confirmed" | "subevent_selected" | "confirmed"
   transactionId?: string // Transaction ID is now the primary identifier for QR codes
   paymentStatus: "pending" | "completed"
+  referenceId?: string // Reference ID for manual payments
   needsPasswordChange?: boolean // Whether user needs to set a password (for manual registrations)
   // Additional fields for silent bulk registration
   fatherMotherName?: string
@@ -76,6 +77,12 @@ export interface EventConfig {
   _id?: string
   paymentAmount: number
   subEvents: SubEvent[]
+  paymentMode: "manual" | "razorpay"
+  externalPaymentUrl?: string
+  krMangalamPaymentUrl?: string
+  nonKrMangalamPaymentUrl?: string
+  referenceIdPrefix?: string
+  subEventSelectionMandatory: boolean // Whether user must select a subevent before payment
   updatedAt: Date
   updatedBy: string
 }
@@ -88,6 +95,9 @@ export interface SubEvent {
   venue: string
   maxParticipants?: number // Optional capacity limit
   isActive: boolean
+  allowOutsiders: boolean // Whether non-KR Mangalam students can join
+  allowedYears?: string[] // Specific years allowed (e.g., ["1st", "2nd", "3rd"]). Empty = all years
+  allowedCourses?: string[] // Specific courses allowed. Empty = all courses
   createdAt: Date
   updatedAt: Date
   participantCount?: number // Current number of participants (added dynamically)
@@ -133,4 +143,14 @@ export interface ScanRecord {
   appliedAt?: Date
   createdAt: Date
   updatedAt: Date
+}
+
+export interface ReferenceId {
+  _id?: string
+  referenceId: string
+  userId: string
+  status: "unused" | "pending" | "used" | "expired"
+  generatedAt: Date
+  usedAt?: Date
+  expiresAt?: Date
 }

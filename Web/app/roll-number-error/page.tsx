@@ -13,7 +13,7 @@ export default function RollNumberErrorPage() {
         <div className="w-full max-w-2xl space-y-8">
           <div className="flex items-center justify-center gap-4">
             <Image src="/kr-logo.png" alt="KR" width={56} height={56} className="rounded-full" />
-            <Image src="/ideas-white.png" alt="IDEAS" width={160} height={48} className="drop-shadow-2xl" />
+            <Image src="/solesta-white.png" alt="Solesta" width={160} height={48} className="drop-shadow-2xl" />
           </div>
 
           <div className="rounded-2xl bg-neutral-900/70 border border-neutral-800 p-8 shadow-2xl">

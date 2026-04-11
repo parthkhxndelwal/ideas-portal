@@ -110,8 +110,8 @@ export default function VerifyEmailPage() {
                 priority
               />
               <Image
-                src="/ideas-white.png"
-                alt="IDEAS Logo"
+                src="/solesta-white.png"
+                alt="Solesta Logo"
                 width={160}
                 height={48}
                 className="drop-shadow-2xl"
@@ -119,7 +119,7 @@ export default function VerifyEmailPage() {
               />
             </div>
             <p className="text-sm text-neutral-400">
-              Securely verify your email to continue your IDEAS 3.0 journey.
+              Securely verify your email to continue your Solesta journey.
             </p>
           </div>
 

@@ -2,12 +2,18 @@ import { type NextRequest, NextResponse } from "next/server"
 import { Database } from "@/lib/database"
 import { verifyJWT } from "@/lib/auth"
 
-// GET: Fetch the current payment amount from event config
+// GET: Fetch the current payment amount and config
 export async function GET(_request: NextRequest) {
   try {
     const config = await Database.getEventConfig()
     return NextResponse.json({ 
-      paymentAmount: config.paymentAmount || 200 
+      paymentAmount: config.paymentAmount || 200,
+      paymentMode: config.paymentMode || "manual",
+      externalPaymentUrl: config.externalPaymentUrl || null,
+      krMangalamPaymentUrl: config.krMangalamPaymentUrl || null,
+      nonKrMangalamPaymentUrl: config.nonKrMangalamPaymentUrl || null,
+      referenceIdPrefix: config.referenceIdPrefix || "EVT-",
+      subEventSelectionMandatory: config.subEventSelectionMandatory ?? false
     })
   } catch (error) {
     console.error("Error fetching payment amount:", error)
@@ -18,7 +24,7 @@ export async function GET(_request: NextRequest) {
   }
 }
 
-// POST: Update the payment amount (admin only)
+// POST: Update the payment config (admin only)
 export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
@@ -38,29 +44,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Parse and validate the new amount
+    // Parse and validate the config
     const body = await request.json()
-    const { paymentAmount } = body
+    const { paymentAmount, paymentMode, externalPaymentUrl, krMangalamPaymentUrl, nonKrMangalamPaymentUrl, referenceIdPrefix, subEventSelectionMandatory, subEvents } = body
 
-    if (typeof paymentAmount !== "number" || paymentAmount < 0) {
+    // Get current config for subEvents if not provided
+    const currentConfig = await Database.getEventConfig()
+    const currentSubEvents = subEvents !== undefined ? subEvents : currentConfig.subEvents
+
+    if (typeof paymentAmount === "number" && paymentAmount < 0) {
       return NextResponse.json(
         { error: "Invalid payment amount. Must be a positive number." },
         { status: 400 }
       )
     }
 
-    // Update the payment amount in the database
-    await Database.updateEventConfig(paymentAmount, user.email)
+    // Update the config in the database
+    await Database.updateEventConfig(
+      paymentAmount ?? currentConfig.paymentAmount,
+      currentSubEvents,
+      user.email,
+      paymentMode,
+      externalPaymentUrl,
+      krMangalamPaymentUrl,
+      nonKrMangalamPaymentUrl,
+      referenceIdPrefix,
+      subEventSelectionMandatory
+    )
 
     return NextResponse.json({
       success: true,
-      paymentAmount,
-      message: "Payment amount updated successfully",
+      message: "Payment configuration updated successfully",
     })
   } catch (error) {
-    console.error("Error updating payment amount:", error)
+    console.error("Error updating payment config:", error)
     return NextResponse.json(
-      { error: "Failed to update payment amount" },
+      { error: "Failed to update payment config" },
       { status: 500 }
     )
   }

@@ -356,7 +356,7 @@ export class QRService {
       }
 
       const parts = qrString.split('_');
-      if (parts.length < 3 || parts[1] !== 'ideas3.0') {
+      if (parts.length < 3 || parts[1] !== 'solesta') {
         return null;
       }
 

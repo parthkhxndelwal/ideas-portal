@@ -140,8 +140,8 @@ export default function ForgotPasswordPage() {
               className="w-12 h-12 object-contain"
             />
             <Image
-              src="/ideas-white.png"
-              alt="IDEAS Logo"
+              src="/solesta-white.png"
+              alt="Solesta Logo"
               width={120}
               height={40}
               className="h-10 w-auto object-contain"

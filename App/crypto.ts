@@ -28,7 +28,7 @@ export function decrypt(encodedData: string): string {
 }
 
 /**
- * Decodes QR data specifically for IDEAS 3.0
+ * Decodes QR data specifically for Solesta
  * @param encodedData - The encoded QR data
  * @returns Object containing the decoded data and identifiers
  */
@@ -43,8 +43,8 @@ export function decryptQRData(encodedData: string): {
     const decrypted = decrypt(encodedData)
 
     // Validate the format
-    if (decrypted.startsWith('volunteer_ideas3.0_')) {
-      const rollNumber = decrypted.replace('volunteer_ideas3.0_', '')
+    if (decrypted.startsWith('volunteer_solesta_')) {
+      const rollNumber = decrypted.replace('volunteer_solesta_', '')
       return {
         originalData: decrypted,
         rollNumber: rollNumber,
@@ -52,10 +52,10 @@ export function decryptQRData(encodedData: string): {
         qrType: "volunteer",
         isValid: true
       }
-    } else if (decrypted.startsWith('participant_ideas3.0_')) {
-      // New standardized format: participant_ideas3.0_${transactionId}
+    } else if (decrypted.startsWith('participant_solesta_')) {
+      // New standardized format: participant_solesta_${transactionId}
       // Transaction ID is now the only identifier (rollNumber is fetched from database)
-      const transactionId = decrypted.replace('participant_ideas3.0_', '')
+      const transactionId = decrypted.replace('participant_solesta_', '')
 
       return {
         originalData: decrypted,

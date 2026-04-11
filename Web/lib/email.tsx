@@ -14,21 +14,21 @@ const transporter = nodemailer.createTransport({
 
 // Helper function to get logo URLs for inline embedding
 function getLogoUrls() {
-  const baseUrl = "https://ideas.parth.engineer"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://solesta.krmangalam.edu.in"
 
   return {
     krLogo: `${baseUrl}/kr-logo.png`,
-    ideasLogo: `${baseUrl}/ideas-email.png`
+    solestaLogo: `${baseUrl}/solesta-email.png`
   }
 }
 
-function renderBrandHeader(krLogoUrl?: string, ideasLogoUrl?: string) {
-  if (!krLogoUrl || !ideasLogoUrl) {
+function renderBrandHeader(krLogoUrl?: string, solestaLogoUrl?: string) {
+  if (!krLogoUrl || !solestaLogoUrl) {
     // Fallback to text if logos aren't available
     return `
     <div style="text-align: center; margin-bottom: 30px;">
       <h2 style="color: #dc2626; margin: 0;">KR Mangalam University</h2>
-      <h3 style="color: #2563eb; margin: 5px 0 0 0;">IDEAS 3.0</h3>
+      <h3 style="color: #2563eb; margin: 5px 0 0 0;">Solesta</h3>
     </div>
   `
   }
@@ -37,13 +37,13 @@ function renderBrandHeader(krLogoUrl?: string, ideasLogoUrl?: string) {
     <div style="text-align: center; margin-bottom: 30px;">
       <div style="display: inline-block;">
         <img src="${krLogoUrl}" alt="KR Mangalam University" style="height: 48px; width: auto; margin-right: 20px; vertical-align: middle;" />
-        <img src="${ideasLogoUrl}" alt="IDEAS" style="height: 48px; width: auto; vertical-align: middle;" />
+        <img src="${solestaLogoUrl}" alt="Solesta" style="height: 48px; width: auto; vertical-align: middle;" />
       </div>
     </div>
   `
 }
 
-function renderEmailTemplate(content: string, krLogoUrl?: string, ideasLogoUrl?: string) {
+function renderEmailTemplate(content: string, krLogoUrl?: string, solestaLogoUrl?: string) {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -53,7 +53,7 @@ function renderEmailTemplate(content: string, krLogoUrl?: string, ideasLogoUrl?:
       <meta name="x-apple-disable-message-reformatting">
       <meta name="color-scheme" content="light">
       <meta name="supported-color-schemes" content="light">
-      <title>IDEAS Portal</title>
+      <title>Solesta</title>
       <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
         .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; }
@@ -64,7 +64,7 @@ function renderEmailTemplate(content: string, krLogoUrl?: string, ideasLogoUrl?:
     <body>
       <div class="email-container">
         <div class="email-content">
-          ${renderBrandHeader(krLogoUrl, ideasLogoUrl)}
+          ${renderBrandHeader(krLogoUrl, solestaLogoUrl)}
           ${content}
         </div>
         <div class="email-footer">
@@ -81,7 +81,7 @@ export async function sendOTPEmail(email: string, otp: string) {
     const logoUrls = getLogoUrls()
     
     const content = `
-      <h2>IDEAS Portal - Email Verification</h2>
+      <h2>Solesta - Email Verification</h2>
       <p>Your OTP for email verification is:</p>
       <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; margin: 20px 0;">
         ${otp}
@@ -93,8 +93,8 @@ export async function sendOTPEmail(email: string, otp: string) {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "IDEAS Portal - Email Verification",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Solesta - Email Verification",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
     }
 
     await transporter.sendMail(mailOptions)
@@ -117,9 +117,9 @@ export async function sendVolunteerQR(email: string, rollNumber: string, qrData:
     })
 
     const content = `
-      <h2>IDEAS Portal - Volunteer Entry QR</h2>
+      <h2>Solesta - Volunteer Entry QR</h2>
       <p>Hello,</p>
-      <p>Your volunteer entry QR code for IDEAS 3.0 is ready!</p>
+      <p>Your volunteer entry QR code for Solesta is ready!</p>
       <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
         <p><strong>Roll Number:</strong> ${rollNumber}</p>
         <div style="margin: 20px 0;">
@@ -133,14 +133,14 @@ export async function sendVolunteerQR(email: string, rollNumber: string, qrData:
         <li>Download and save the QR code to your phone for easy access</li>
         <li>Present this QR code at the venue for entry</li>
       </ul>
-      <p>Thank you for volunteering at IDEAS 3.0!</p>
+      <p>Thank you for volunteering at Solesta!</p>
     `
 
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "IDEAS Portal - Volunteer Entry QR",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Solesta - Volunteer Entry QR",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
       attachments: [
         {
           filename: `volunteer-qr-${rollNumber}.png`,
@@ -164,7 +164,7 @@ export async function sendResendOTPEmail(email: string, otp: string) {
     const logoUrls = getLogoUrls()
     
     const content = `
-      <h2>IDEAS Portal - Email Verification (Resent)</h2>
+      <h2>Solesta - Email Verification (Resent)</h2>
       <p>Your new OTP for email verification is:</p>
       <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; margin: 20px 0;">
         ${otp}
@@ -176,8 +176,8 @@ export async function sendResendOTPEmail(email: string, otp: string) {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "IDEAS Portal - Resend Email Verification",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Solesta - Resend Email Verification",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
     }
 
     await transporter.sendMail(mailOptions)
@@ -195,8 +195,8 @@ export async function sendPasswordResetEmail(email: string, resetToken: string) 
     const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`
 
     const content = `
-      <h2>IDEAS Portal - Password Reset</h2>
-      <p>You requested a password reset for your IDEAS Portal account.</p>
+      <h2>Solesta - Password Reset</h2>
+      <p>You requested a password reset for your Solesta account.</p>
       <p>Click the button below to reset your password:</p>
       <div style="text-align: center; margin: 30px 0;">
         <a href="${resetUrl}" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
@@ -210,8 +210,8 @@ export async function sendPasswordResetEmail(email: string, resetToken: string) 
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "IDEAS Portal - Password Reset",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Solesta - Password Reset",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
     }
 
     await transporter.sendMail(mailOptions)
@@ -230,8 +230,8 @@ export async function sendWelcomeEmail(email: string, name: string, paymentAmoun
     const formattedAmount = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paymentAmount)
 
     const content = `
-      <h2>Welcome to IDEAS Portal, ${name}!</h2>
-      <p>Your account has been successfully created. To complete your registration and secure your spot at IDEAS 3.0, you need to complete the payment process.</p>
+      <h2>Welcome to Solesta, ${name}!</h2>
+      <p>Your account has been successfully created. To complete your registration and secure your spot at Solesta, you need to complete the payment process.</p>
       
       <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <h3 style="color: #dc2626; margin-top: 0;">Next Steps:</h3>
@@ -250,8 +250,8 @@ export async function sendWelcomeEmail(email: string, name: string, paymentAmoun
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "Welcome to IDEAS Portal - Complete Your Registration",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Welcome to Solesta - Complete Your Registration",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
     }
 
     await transporter.sendMail(mailOptions)
@@ -283,11 +283,11 @@ export async function sendPaymentConfirmationEmail(
     const content = `
       <div style="background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
         <h2 style="color: #166534; margin-top: 0;">🎉 Payment Confirmed!</h2>
-        <p style="color: #166534; margin-bottom: 0;">Your registration for IDEAS 3.0 is now complete!</p>
+        <p style="color: #166534; margin-bottom: 0;">Your registration for Solesta is now complete!</p>
       </div>
       
       <h3>Hello ${name},</h3>
-      <p>Congratulations! Your payment has been successfully processed and your registration for IDEAS 3.0 is now confirmed.</p>
+      <p>Congratulations! Your payment has been successfully processed and your registration for Solesta is now confirmed.</p>
       
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <h4 style="margin-top: 0;">Registration Details:</h4>
@@ -332,8 +332,8 @@ export async function sendPaymentConfirmationEmail(
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "IDEAS Portal - Payment Confirmed! Registration Complete",
-      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.ideasLogo),
+      subject: "Solesta - Payment Confirmed! Registration Complete",
+      html: renderEmailTemplate(content, logoUrls.krLogo, logoUrls.solestaLogo),
       attachments: qrCodeBuffer && qrCodeBuffer.length > 0 ? [
         {
           filename: `entry-qr-${rollNumber}.png`,
@@ -410,7 +410,7 @@ export async function sendManualRegistrationEmail({
       to: email,
       subject: "Successfully registered for the IDEAS Event!",
       html: renderEmailTemplate(`
-        <h2 style="color: #111827;">You're all set for IDEAS 3.0, ${name}!</h2>
+        <h2 style="color: #111827;">You're all set for Solesta, ${name}!</h2>
         <p style="color: #374151;">We're excited to confirm that your registration and payment have been recorded successfully. Welcome aboard!</p>
 
         ${subeventName && venue ? `
@@ -476,7 +476,7 @@ export async function sendManualRegistrationEmail({
             <li>Arrive at the venue on time as specified in your registration details.</li>
           </ul>
         </div>
-      `, logoUrls.krLogo, logoUrls.ideasLogo),
+      `, logoUrls.krLogo, logoUrls.solestaLogo),
       attachments,
     }
 

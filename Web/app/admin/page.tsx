@@ -14,7 +14,7 @@ import {
   DollarSign,
   LogIn,
   Calendar,
-  RefreshCw,
+  CreditCard,
 } from "lucide-react"
 
 export default function AdminPage() {
@@ -77,47 +77,7 @@ export default function AdminPage() {
       icon: ScanLine,
       action: () => router.push("/admin/verify-qr"),
     },
-    {
-      title: "Migrate Manual Registrations",
-      description: "Update existing manual registrations to complete status for mobile app compatibility",
-      icon: RefreshCw,
-      action: () => handleMigration(),
-    },
   ]
-
-  const handleMigration = async () => {
-    try {
-      const token = localStorage.getItem("authToken")
-      const response = await fetch("/api/admin/migrate-registrations", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: "Migration completed",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Migration failed",
-          description: result.error || "An error occurred",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Migration error:", error)
-      toast({
-        title: "Migration failed",
-        description: "An error occurred while running the migration",
-        variant: "destructive",
-      })
-    }
-  }
 
   return (
     <AdminLayout title="Main Dashboard">

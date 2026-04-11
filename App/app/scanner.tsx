@@ -19,7 +19,8 @@ const BYPASS_USERS = [
   { id: "bypass2", name: "Aadya Mishra", rollNumber: "2301201168", course: "BCA (AI & DS)", email: "Aadyamishra0001@gmail.com" },
   { id: "bypass3", name: "Kanishk", rollNumber: "2301201018", course: "BCA (AI & DS)", email: "kanishkg.2005@gmail.com" },
   { id: "bypass4", name: "Devraj Singh", rollNumber: "2301201093", course: "BCA (AI & DS)", email: "drschanay@gmail.com" },
-  { id: "bypass5", name: "Vedant", rollNumber: "2301010369", course: "BTech (CSE)", email: "Vedants062@gamil.com" }
+  { id: "bypass5", name: "Vedant", rollNumber: "2301010369", course: "BTech (CSE)", email: "Vedants062@gmail.com" },
+  { id: "bypass6", name: "Deepanshu Negi", rollNumber: "2301350026", course: "BTech (CSE) FSD", email: "parthnotfoundop@gmail.com" }
 ];
 
 export default function ScannerScreen() {
@@ -157,7 +158,7 @@ export default function ScannerScreen() {
 
       const qrData = QRService.parseQRData(data);
       if (!qrData) {
-        Alert.alert('Invalid QR Code', 'This QR code is not valid for IDEAS 3.0');
+        Alert.alert('Invalid QR Code', 'This QR code is not valid for Solesta');
         return;
       }
 

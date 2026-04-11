@@ -136,8 +136,8 @@ export function LoadingTransition({ isLoading, children, className = "" }: Loadi
               
               <div className="relative">
                 <Image
-                  src="/ideas-white.png"
-                  alt="IDEAS Logo"
+                  src="/solesta-white.png"
+                  alt="Solesta Logo"
                   width={160}
                   height={42}
                   className="drop-shadow-2xl transform transition-all duration-1000 hover:scale-105"
@@ -149,7 +149,7 @@ export function LoadingTransition({ isLoading, children, className = "" }: Loadi
             {/* Loading Text with Typewriter Effect */}
             <div className="space-y-4">
               <h2 className="text-3xl font-bold text-white">
-                Welcome to IDEAS 3.0
+                Welcome to Solesta
               </h2>
               <p className="text-neutral-300 text-lg">
                 KR Mangalam University

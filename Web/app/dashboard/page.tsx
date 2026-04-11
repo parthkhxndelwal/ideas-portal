@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,8 @@ import {
   Sparkles,
   Sun,
   Moon,
-  Loader2
+  Loader2,
+  Copy
 } from "lucide-react"
 import Image from "next/image"
 import { LoadingTransition } from "@/components/ui/loading-transition"
@@ -180,16 +181,20 @@ interface SubEvent {
   participantCount?: number
 }
 
+type PaymentMode = "manual" | "razorpay"
+
 interface User {
   id: string
   name: string
   email?: string
   rollNumber: string
   courseAndSemester: string
+  isFromUniversity: boolean
   registrationStatus: "pending" | "details_confirmed" | "subevent_selected" | "confirmed"
   paymentStatus: "pending" | "completed"
   transactionId?: string
   paymentAmount?: number
+  referenceId?: string
 }
 
 export default function DashboardPage() {
@@ -197,13 +202,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [animating, setAnimating] = useState(false)
   const [documentLoading, setDocumentLoading] = useState(false)
-  const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
+  const [showPaymentModal, setShowPaymentDrawer] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [paymentError, setPaymentError] = useState("")
   const [paymentAmount, setPaymentAmount] = useState<number>(200)
   const [razorpayLoaded, setRazorpayLoaded] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
-  const [allowDrawerClose, setAllowDrawerClose] = useState(true)
+  const [allowModalClose, setAllowDrawerClose] = useState(true)
+  
+  // Manual payment state
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("manual")
+  const [referenceId, setReferenceId] = useState<string>("")
+  const [referenceIdLoading, setReferenceIdLoading] = useState(false)
+  const [referenceIdError, setReferenceIdError] = useState("")
+  const [paymentUrl, setPaymentUrl] = useState<string>("")
+  
   const router = useRouter()
   const { theme, toggleTheme: _toggleTheme, toggleRef: _toggleRef, isTransitioning: _isTransitioning, setTheme } = useTheme()
 
@@ -212,6 +225,7 @@ export default function DashboardPage() {
   const [selectedSubEvent, setSelectedSubEvent] = useState<string>("")
   const [subeventLoading, setSubeventLoading] = useState(false)
   const [subeventError, setSubeventError] = useState("")
+  const [subEventSelectionMandatory, setSubEventSelectionMandatory] = useState<boolean>(false)
 
   const simpleToggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark"
@@ -305,19 +319,38 @@ export default function DashboardPage() {
       if (typeof data.paymentAmount === "number") {
         setPaymentAmount(data.paymentAmount)
       }
+      if (data.subEventSelectionMandatory !== undefined) {
+        setSubEventSelectionMandatory(data.subEventSelectionMandatory)
+      }
+      if (data.paymentMode) {
+        setPaymentMode(data.paymentMode)
+      }
+      
+      // Set appropriate payment URL based on user type
+      if (data.paymentMode === "manual") {
+        const isFromUniversity = user?.isFromUniversity
+        if (isFromUniversity && data.krMangalamPaymentUrl) {
+          setPaymentUrl(data.krMangalamPaymentUrl)
+        } else if (!isFromUniversity && data.nonKrMangalamPaymentUrl) {
+          setPaymentUrl(data.nonKrMangalamPaymentUrl)
+        } else {
+          setPaymentUrl(data.externalPaymentUrl || "")
+        }
+      }
     } catch (error) {
       console.error("Error fetching payment amount:", error)
     }
-  }, [])
+  }, [user?.isFromUniversity])
 
   const openPaymentDrawer = useCallback(() => {
     setPaymentError("")
     setPaymentSuccess(false)
     setPaymentLoading(false)
     setAllowDrawerClose(true)
+    setReferenceId(user?.referenceId || "")
     setShowPaymentDrawer(true)
     fetchPaymentAmount()
-  }, [fetchPaymentAmount])
+  }, [fetchPaymentAmount, user?.referenceId])
 
   const closePaymentDrawer = useCallback(() => {
     setShowPaymentDrawer(false)
@@ -330,8 +363,8 @@ export default function DashboardPage() {
     }, 300)
   }, [])
 
-  const handleDrawerOpenChange = useCallback((open: boolean) => {
-    if (!open && !allowDrawerClose) {
+  const handleModalOpenChange = useCallback((open: boolean) => {
+    if (!open && !allowModalClose) {
       // Prevent closing if we're in the middle of payment flow
       return
     }
@@ -345,7 +378,7 @@ export default function DashboardPage() {
         setAllowDrawerClose(true)
       }, 300)
     }
-  }, [allowDrawerClose])
+  }, [allowModalClose])
 
   const verifyPayment = useCallback(async (razorpayResponse: RazorpayResponse, token: string) => {
     try {
@@ -463,6 +496,53 @@ export default function DashboardPage() {
     }
   }, [paymentAmount, razorpayLoaded, router, user, verifyPayment])
 
+  const handleGenerateReferenceId = useCallback(async () => {
+    const token = localStorage.getItem("authToken")
+    if (!token || !user) {
+      setReferenceIdError("Authentication required")
+      return
+    }
+
+    setReferenceIdLoading(true)
+    setReferenceIdError("")
+
+    try {
+      const response = await fetch("/api/user/reference-id", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.referenceId) {
+        setReferenceId(data.referenceId)
+        setUser((prev) => prev ? { ...prev, referenceId: data.referenceId } : prev)
+      } else {
+        setReferenceIdError(data.error || "Failed to generate reference ID")
+      }
+    } catch (error) {
+      console.error("Error generating reference ID:", error)
+      setReferenceIdError("An error occurred. Please try again.")
+    } finally {
+      setReferenceIdLoading(false)
+    }
+  }, [user])
+
+  const handleCopyReferenceId = useCallback(() => {
+    if (referenceId) {
+      navigator.clipboard.writeText(referenceId)
+    }
+  }, [referenceId])
+
+  const handleGoToPayment = useCallback(() => {
+    if (paymentUrl) {
+      window.open(paymentUrl, "_blank")
+    }
+  }, [paymentUrl])
+
   const handleConfirmRegistration = () => {
     openPaymentDrawer()
   }
@@ -560,7 +640,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (!showPaymentDrawer) {
+    if (!showPaymentModal) {
       return
     }
 
@@ -576,7 +656,7 @@ export default function DashboardPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [showPaymentDrawer, handleDismissPaymentDrawer])
+  }, [showPaymentModal, handleDismissPaymentDrawer])
 
   const handleSubeventSubmit = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -1006,48 +1086,167 @@ export default function DashboardPage() {
       </main>
     </div>
 
-        <Drawer open={showPaymentDrawer} onOpenChange={handleDrawerOpenChange}>
-          <DrawerContent className="max-h-[90vh] w-[66vw] max-w-4xl mx-auto">
-            <div className="flex flex-col min-h-0">
+        <Dialog open={showPaymentModal} onOpenChange={handleModalOpenChange}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-col">
               {paymentSuccess ? (
                 <>
-                  <DrawerHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
-                    <DrawerTitle className="text-center text-2xl font-bold">Payment Successful!</DrawerTitle>
-                    <DrawerDescription className="text-center text-neutral-600 dark:text-neutral-400 mt-2">
-                      Your registration is confirmed. You can close this window to return to the dashboard.
-                    </DrawerDescription>
-                  </DrawerHeader>
-                  <div className="px-8 py-8 flex-1 flex flex-col items-center justify-center space-y-6">
-                    <div className="w-20 h-20 rounded-full bg-green-500/10 dark:bg-green-400/20 flex items-center justify-center">
-                      <CheckCircle className="w-10 h-10 text-green-500 dark:text-green-300" />
+                  <DialogHeader className="text-center">
+                    <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                     </div>
+                    <DialogTitle className="text-xl font-bold">Payment Successful!</DialogTitle>
+                    <DialogDescription className="text-neutral-600 dark:text-neutral-400">
+                      Your registration is confirmed.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center justify-center space-y-4 py-4">
                     {user.transactionId && (
-                      <div className="bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700/60 rounded-xl p-4 max-w-md">
-                        <div className="text-sm text-neutral-600 dark:text-neutral-300 text-center">
+                      <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-3 w-full">
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
                           Transaction ID
                         </div>
-                        <div className="font-mono text-sm text-neutral-900 dark:text-neutral-100 text-center mt-1 break-all">
+                        <div className="font-mono text-sm text-neutral-900 dark:text-neutral-100 text-center break-all">
                           {user.transactionId}
                         </div>
                       </div>
                     )}
                   </div>
-                  <DrawerFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700">
-                    <DrawerClose asChild>
+                  <DialogFooter>
+                    <DialogClose asChild>
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3">
                         Back to Dashboard
                       </Button>
-                    </DrawerClose>
-                  </DrawerFooter>
+                    </DialogClose>
+                  </DialogFooter>
+                </>
+              ) : paymentMode === "manual" ? (
+                <>
+                  <DialogHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
+                    <DialogTitle className="text-xl font-bold">Manual Payment</DialogTitle>
+                    <DialogDescription className="text-neutral-600 dark:text-neutral-400 mt-1">
+                      Complete your registration with offline payment
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="px-8 py-8 flex-1">
+                    <div className="max-w-2xl mx-auto space-y-8">
+                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 rounded-2xl border border-amber-200 dark:border-amber-700/50 p-6 shadow-sm">
+                        <div className="flex items-start justify-between gap-6">
+                          <div className="flex-1">
+                            <p className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-400 font-medium mb-2">Amount Due</p>
+                            <p className="text-4xl font-bold text-amber-900 dark:text-amber-100 mb-1">₹{paymentAmount}</p>
+                            <p className="text-sm text-amber-700 dark:text-amber-300">IDEAS 3.0 Registration Fee</p>
+                          </div>
+                          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300 dark:border-amber-600 font-medium px-3 py-1">
+                            Manual Payment
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xl">📋</span>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">How to Pay</h4>
+                            <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
+                              <li>Generate your unique Reference ID below</li>
+                              <li>Make payment of <strong>₹{paymentAmount}</strong> at the payment portal</li>
+                              <li>Save your payment receipt for reference</li>
+                              <li>Your payment will be verified within 24-48 hours</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-lg">Reference ID</h3>
+                        {referenceId ? (
+                          <div className="bg-neutral-100 dark:bg-neutral-800/60 rounded-xl border border-neutral-300 dark:border-neutral-600 p-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Your Reference ID</p>
+                                <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-neutral-100 break-all">{referenceId}</p>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCopyReferenceId}
+                                className="flex-shrink-0"
+                              >
+                                Copy
+                              </Button>
+                            </div>
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                              ✓ Reference ID copied to clipboard!
+                            </p>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={handleGenerateReferenceId}
+                            disabled={referenceIdLoading}
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-4"
+                          >
+                            {referenceIdLoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-lg mr-2">🎫</span>
+                                Generate Reference ID
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        {referenceIdError && (
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-sm p-4 rounded-lg">
+                            {referenceIdError}
+                          </div>
+                        )}
+                      </div>
+
+                      {referenceId && paymentUrl && (
+                        <div className="space-y-4">
+                          <Button
+                            onClick={handleGoToPayment}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                          >
+                            <span className="mr-2">🔗</span>
+                            Go to Payment Portal
+                          </Button>
+                          <p className="text-xs text-center text-neutral-500 dark:text-neutral-400">
+                            You will be redirected to complete your payment
+                          </p>
+                        </div>
+                      )}
+
+                      {referenceId && !paymentUrl && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300 text-sm p-4 rounded-lg">
+                          <p className="font-medium">Payment portal not configured</p>
+                          <p className="text-xs mt-1">Please contact support for payment instructions.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <DialogFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700">
+                    <DialogClose asChild>
+                      <Button variant="outline" className="w-full border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                        Cancel
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
                 </>
               ) : (
                 <>
-                  <DrawerHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
-                    <DrawerTitle className="text-xl font-bold">Complete Your Payment</DrawerTitle>
-                    <DrawerDescription className="text-neutral-600 dark:text-neutral-400 mt-1">
+                  <DialogHeader className="px-8 py-6 border-b border-neutral-200 dark:border-neutral-700">
+                    <DialogTitle className="text-xl font-bold">Complete Your Payment</DialogTitle>
+                    <DialogDescription className="text-neutral-600 dark:text-neutral-400 mt-1">
                       Secure payment for IDEAS 3.0 registration
-                    </DrawerDescription>
-                  </DrawerHeader>
+                    </DialogDescription>
+                  </DialogHeader>
                   <div className="px-8 py-8 flex-1">
                     <div className="max-w-2xl mx-auto space-y-8">
                       <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900/60 dark:to-neutral-800/60 rounded-2xl border border-neutral-200 dark:border-neutral-700/60 p-6 shadow-sm">
@@ -1104,7 +1303,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <DrawerFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700 space-y-6">
+                  <DialogFooter className="px-8 py-6 border-t border-neutral-200 dark:border-neutral-700 space-y-6">
                     <Button
                       onClick={handleInitiatePayment}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
@@ -1141,17 +1340,17 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <DrawerClose asChild>
+                    <DialogClose asChild>
                       <Button variant="outline" disabled={paymentLoading} className="w-full border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800">
                         Cancel
                       </Button>
-                    </DrawerClose>
-                  </DrawerFooter>
+                    </DialogClose>
+                  </DialogFooter>
                 </>
               )}
             </div>
-          </DrawerContent>
-        </Drawer>
+          </DialogContent>
+        </Dialog>
       </>
     </LoadingTransition>
   )

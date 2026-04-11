@@ -8,7 +8,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       version: "1.0.0",
-      service: "Ideas Portal API",
+      service: "Solesta API",
       environment: process.env.NODE_ENV || "development",
     }
 
@@ -22,7 +22,7 @@ export async function GET() {
       error: "Internal server error",
       uptime: process.uptime(),
       version: "1.0.0",
-      service: "Ideas Portal API",
+      service: "Solesta API",
       environment: process.env.NODE_ENV || "development",
     }
 

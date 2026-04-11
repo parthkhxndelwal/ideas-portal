@@ -71,8 +71,8 @@ export default function HomePage() {
           <div className="p-4 pt-8">
             <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
               <Image
-                src="/IDEAS.png"
-                alt="IDEAS Banner"
+                src="/solesta-banner.png"
+                alt="Solesta Banner"
                 width={800}
                 height={400}
                 className="w-full h-auto object-cover"

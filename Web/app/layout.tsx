@@ -8,8 +8,8 @@ import { Suspense } from "react"
 import { ThemeScript } from "@/components/theme-script"
 
 export const metadata: Metadata = {
-  title: "IDEAS Portal - KR Mangalam University",
-  description: "Internal Registration Portal for IDEAS Event",
+  title: "Solesta - KR Mangalam University",
+  description: "Internal Registration Portal for Solesta Event",
   generator: "v0.app",
   icons: {
     icon: "/kr-logo.png",

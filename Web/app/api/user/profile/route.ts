@@ -36,10 +36,12 @@ export async function GET(request: NextRequest) {
         email: user.email,
         rollNumber: user.rollNumber,
         courseAndSemester: user.courseAndSemester,
+        isFromUniversity: user.isFromUniversity ?? true,
         registrationStatus: user.registrationStatus,
         paymentStatus: user.paymentStatus,
         transactionId: user.transactionId,
         paymentAmount: completedTransaction?.amount,
+        referenceId: user.referenceId,
       },
       pendingTransactions: pendingTransactions.map(t => ({
         id: t._id.toString(),

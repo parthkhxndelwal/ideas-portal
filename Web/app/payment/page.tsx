@@ -138,9 +138,9 @@ export default function PaymentPage() {
         amount: data.amount,
         currency: data.currency,
         order_id: data.orderId,
-        name: "IDEAS 3.0",
+        name: "Solesta",
         description: "Event Registration Fee",
-        image: "/ideas-black.png",
+        image: "/solesta-black.png",
         handler: async function (response: RazorpayResponse) {
           await verifyPayment(response, token!)
         },
@@ -222,15 +222,15 @@ export default function PaymentPage() {
                 className="rounded-full"
               />
               <Image
-                src="/ideas-black.png"
-                alt="IDEAS Logo"
+                src="/solesta-black.png"
+                alt="Solesta Logo"
                 width={120}
                 height={34}
                 className="dark:hidden"
               />
               <Image
-                src="/ideas-white.png"
-                alt="IDEAS Logo"
+                src="/solesta-white.png"
+                alt="Solesta Logo"
                 width={120}
                 height={34}
                 className="hidden dark:block"
@@ -256,7 +256,7 @@ export default function PaymentPage() {
                         <div>
                           <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Amount Due</p>
                           <p className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50">₹{paymentAmount}</p>
-                          <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">IDEAS 3.0 Registration Fee</p>
+                          <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">Solesta Registration Fee</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-600 dark:bg-green-400/20 dark:text-green-200 border border-green-500/30">
                           One-time Payment
@@ -335,7 +335,7 @@ export default function PaymentPage() {
                     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/40 p-4 sm:p-5 space-y-3">
                       <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Need Help?</h4>
                       <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
-                        If your payment doesn&apos;t reflect within a few minutes, keep your payment reference handy and contact the IDEAS support team.
+                        If your payment doesn&apos;t reflect within a few minutes, keep your payment reference handy and contact the Solesta support team.
                       </p>
                       <Button
                         variant="outline"

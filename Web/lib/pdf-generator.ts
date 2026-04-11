@@ -54,7 +54,7 @@ export async function generateRegistrationPDF(user: User, options: GeneratePdfOp
 
   // 7. Generate encrypted QR code based on transaction ID only
   const transactionId = user.transactionId ?? `TXN_${Date.now()}`
-  const qrData = `participant_ideas3.0_${transactionId}`;
+  const qrData = `participant_solesta_${transactionId}`;
   const encryptedQrData = await encrypt(qrData);
   const qrCodeDataURL = await QRCode.toDataURL(encryptedQrData, { width: 150 });
 

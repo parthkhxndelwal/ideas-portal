@@ -126,8 +126,8 @@ export default function AdminLayout({
             {/* Logo */}
             <Link href="/admin" className="cursor-pointer">
               <Image
-                src={isClient && theme === "dark" ? "/ideas-white.png" : "/ideas-black.png"}
-                alt="IDEAS Logo"
+                src={isClient && theme === "dark" ? "/solesta-white.png" : "/solesta-black.png"}
+                alt="Solesta Logo"
                 width={120}
                 height={40}
                 className="h-10 w-auto object-contain"

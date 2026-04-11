@@ -1,12 +1,12 @@
 import clientPromise from "./mongodb"
 import { ObjectId } from "mongodb"
-import type { User, RollNumberData, BlacklistedRollNumber, Transaction, EntryRecord, ScannerDevice, ScanRecord, SubEvent } from "./models"
+import type { User, RollNumberData, BlacklistedRollNumber, Transaction, EntryRecord, ScannerDevice, ScanRecord, SubEvent, ReferenceId } from "./models"
 
 export class Database {
   private static async getDb() {
     try {
       const client = await clientPromise
-      return client.db("ideas_portal")
+      return client.db("solesta")
     } catch (error) {
       console.error("Database connection error:", error)
       throw new Error("Failed to connect to database")
@@ -479,6 +479,8 @@ export class Database {
         const defaultConfig = {
           paymentAmount: 200,
           subEvents: [],
+          paymentMode: "manual",
+          referenceIdPrefix: "EVT-",
           updatedAt: new Date(),
           updatedBy: "system",
         }
@@ -493,19 +495,49 @@ export class Database {
     }
   }
 
-  static async updateEventConfig(paymentAmount: number, subEvents: any[], updatedBy: string) {
+  static async updateEventConfig(
+    paymentAmount: number, 
+    subEvents: any[], 
+    updatedBy: string,
+    paymentMode?: "manual" | "razorpay",
+    externalPaymentUrl?: string,
+    krMangalamPaymentUrl?: string,
+    nonKrMangalamPaymentUrl?: string,
+    referenceIdPrefix?: string,
+    subEventSelectionMandatory?: boolean
+  ) {
     try {
       const db = await this.getDb()
+      const updateData: any = {
+        paymentAmount,
+        subEvents,
+        updatedAt: new Date(),
+        updatedBy,
+      }
+
+      // Only update payment mode related fields if provided
+      if (paymentMode) {
+        updateData.paymentMode = paymentMode
+      }
+      if (externalPaymentUrl !== undefined) {
+        updateData.externalPaymentUrl = externalPaymentUrl
+      }
+      if (krMangalamPaymentUrl !== undefined) {
+        updateData.krMangalamPaymentUrl = krMangalamPaymentUrl
+      }
+      if (nonKrMangalamPaymentUrl !== undefined) {
+        updateData.nonKrMangalamPaymentUrl = nonKrMangalamPaymentUrl
+      }
+      if (referenceIdPrefix !== undefined) {
+        updateData.referenceIdPrefix = referenceIdPrefix
+      }
+      if (subEventSelectionMandatory !== undefined) {
+        updateData.subEventSelectionMandatory = subEventSelectionMandatory
+      }
+
       const result = await db.collection("eventConfig").updateOne(
         {},
-        {
-          $set: {
-            paymentAmount,
-            subEvents,
-            updatedAt: new Date(),
-            updatedBy,
-          },
-        },
+        { $set: updateData },
         { upsert: true }
       )
       
@@ -527,11 +559,39 @@ export class Database {
     }
   }
 
-  static async getActiveSubEvents(): Promise<SubEvent[]> {
+  static async getActiveSubEvents(userInfo?: { isFromUniversity?: boolean; year?: string; courseAndSemester?: string }): Promise<SubEvent[]> {
     try {
       const db = await this.getDb()
       const config = await this.getEventConfig()
-      const activeSubEvents = (config.subEvents || []).filter((event: SubEvent) => event.isActive)
+      let activeSubEvents = (config.subEvents || []).filter((event: SubEvent) => event.isActive)
+
+      // Filter based on user eligibility if user info provided
+      if (userInfo) {
+        activeSubEvents = activeSubEvents.filter((event: SubEvent) => {
+          // If user is not from university and subevent doesn't allow outsiders, exclude
+          if (!userInfo.isFromUniversity && !event.allowOutsiders) {
+            return false
+          }
+          
+          // Check year restrictions
+          if (event.allowedYears && event.allowedYears.length > 0) {
+            const userYear = userInfo.year || ""
+            if (!event.allowedYears.some(y => userYear.toLowerCase().includes(y.toLowerCase()))) {
+              return false
+            }
+          }
+          
+          // Check course restrictions
+          if (event.allowedCourses && event.allowedCourses.length > 0) {
+            const userCourse = userInfo.courseAndSemester || ""
+            if (!event.allowedCourses.some(c => userCourse.toLowerCase().includes(c.toLowerCase()))) {
+              return false
+            }
+          }
+          
+          return true
+        })
+      }
 
       // Add participant counts to each subevent
       const subEventsWithCounts = await Promise.all(
@@ -1109,6 +1169,215 @@ export class Database {
     } catch (error) {
       console.error("Migration failed:", error)
       throw error
+    }
+  }
+
+  // ==================== REFERENCE ID METHODS ====================
+
+  /**
+   * Generate a unique reference ID for a user
+   * @param userId - The user's ID
+   * @returns The generated reference ID record
+   */
+  static async generateReferenceId(userId: string): Promise<ReferenceId> {
+    try {
+      const db = await this.getDb()
+      const config = await this.getEventConfig()
+      const prefix = config.referenceIdPrefix || "EVT-"
+
+      // Check if user already has a reference ID
+      const existing = await db.collection("referenceIds").findOne({ userId, status: { $ne: "expired" } })
+      if (existing) {
+        console.log("Reference ID already exists for user:", userId)
+        return existing
+      }
+
+      // Generate unique reference ID
+      const timestamp = Date.now().toString(36).toUpperCase()
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+      const referenceId = `${prefix}${timestamp}${random}`
+
+      const referenceIdRecord: Omit<ReferenceId, "_id"> = {
+        referenceId,
+        userId,
+        status: "unused",
+        generatedAt: new Date(),
+      }
+
+      const result = await db.collection("referenceIds").insertOne(referenceIdRecord)
+      console.log("Reference ID generated:", referenceId)
+      return { ...referenceIdRecord, _id: result.insertedId.toString() }
+    } catch (error) {
+      console.error("Error generating reference ID:", error)
+      throw new Error("Failed to generate reference ID")
+    }
+  }
+
+  /**
+   * Get reference ID for a user (generates if doesn't exist)
+   * @param userId - The user's ID
+   * @returns The reference ID record
+   */
+  static async getReferenceIdForUser(userId: string): Promise<ReferenceId | null> {
+    try {
+      const db = await this.getDb()
+      const ref = await db.collection("referenceIds").findOne({ userId, status: { $ne: "expired" } })
+      if (ref) {
+        return ref as ReferenceId
+      }
+
+      // Generate if doesn't exist
+      return await this.generateReferenceId(userId)
+    } catch (error) {
+      console.error("Error getting reference ID:", error)
+      throw new Error("Failed to get reference ID")
+    }
+  }
+
+  /**
+   * Mark reference ID as pending (user submitted for verification)
+   * @param referenceId - The reference ID
+   * @returns Updated record
+   */
+  static async markReferenceIdPending(referenceId: string): Promise<boolean> {
+    try {
+      const db = await this.getDb()
+      const result = await db.collection("referenceIds").updateOne(
+        { referenceId, status: "unused" },
+        { $set: { status: "pending", usedAt: new Date() } }
+      )
+      console.log("Reference ID marked as pending:", referenceId, "modified:", result.modifiedCount > 0)
+      return result.modifiedCount > 0
+    } catch (error) {
+      console.error("Error marking reference ID as pending:", error)
+      throw new Error("Failed to update reference ID")
+    }
+  }
+
+  /**
+   * Verify reference ID and update user status
+   * @param referenceId - The reference ID to verify
+   * @returns Success status and user info
+   */
+  static async verifyReferenceId(referenceId: string): Promise<{ success: boolean; userId?: string; error?: string }> {
+    try {
+      const db = await this.getDb()
+      const ref = await db.collection("referenceIds").findOne({ referenceId, status: "pending" })
+
+      if (!ref) {
+        return { success: false, error: "Reference ID not found or not pending verification" }
+      }
+
+      // Update reference ID status to used
+      await db.collection("referenceIds").updateOne(
+        { referenceId },
+        { $set: { status: "used", usedAt: new Date() } }
+      )
+
+      // Update user status to confirmed
+      await db.collection("users").updateOne(
+        { _id: new ObjectId(ref.userId) },
+        { 
+          $set: { 
+            registrationStatus: "confirmed",
+            paymentStatus: "completed",
+            updatedAt: new Date()
+          } 
+        }
+      )
+
+      console.log("Reference ID verified:", referenceId, "for user:", ref.userId)
+      return { success: true, userId: ref.userId }
+    } catch (error) {
+      console.error("Error verifying reference ID:", error)
+      return { success: false, error: "Failed to verify reference ID" }
+    }
+  }
+
+  /**
+   * Expire a reference ID (admin action)
+   * @param referenceId - The reference ID to expire
+   * @returns Success status
+   */
+  static async expireReferenceId(referenceId: string): Promise<boolean> {
+    try {
+      const db = await this.getDb()
+      const result = await db.collection("referenceIds").updateOne(
+        { referenceId },
+        { $set: { status: "expired", expiresAt: new Date() } }
+      )
+      console.log("Reference ID expired:", referenceId, "modified:", result.modifiedCount > 0)
+      return result.modifiedCount > 0
+    } catch (error) {
+      console.error("Error expiring reference ID:", error)
+      throw new Error("Failed to expire reference ID")
+    }
+  }
+
+  /**
+   * Get all reference IDs with user details
+   * @param status - Optional filter by status
+   * @returns Array of reference ID records with user info
+   */
+  static async getAllReferenceIds(status?: string): Promise<(ReferenceId & { userEmail?: string; userName?: string })[]> {
+    try {
+      const db = await this.getDb()
+      const query: any = {}
+      if (status) {
+        query.status = status
+      }
+
+      const pipeline = [
+        { $match: query },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+      ]
+
+      const results = await db.collection("referenceIds").aggregate(pipeline).toArray()
+      return results.map(r => ({
+        ...r,
+        userEmail: r.user?.email,
+        userName: r.user?.name
+      }))
+    } catch (error) {
+      console.error("Error getting reference IDs:", error)
+      throw new Error("Failed to get reference IDs")
+    }
+  }
+
+  /**
+   * Get reference ID statistics
+   * @returns Stats counts
+   */
+  static async getReferenceIdStats(): Promise<{ unused: number; pending: number; used: number; expired: number }> {
+    try {
+      const db = await this.getDb()
+      const stats = await db.collection("referenceIds").aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        }
+      ]).toArray()
+
+      const result = { unused: 0, pending: 0, used: 0, expired: 0 }
+      stats.forEach(s => {
+        if (s._id in result) {
+          result[s._id as keyof typeof result] = s.count
+        }
+      })
+      return result
+    } catch (error) {
+      console.error("Error getting reference ID stats:", error)
+      return { unused: 0, pending: 0, used: 0, expired: 0 }
     }
   }
 }

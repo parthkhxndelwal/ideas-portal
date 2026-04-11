@@ -40,7 +40,7 @@ export default function Index() {
     >
       <ActivityIndicator size="large" color="#007AFF" />
       <Text style={{ marginTop: 20, fontSize: 16, color: '#666' }}>
-        Initializing IDEAS Scanner...
+        Initializing Solesta Scanner...
       </Text>
     </View>
   );
