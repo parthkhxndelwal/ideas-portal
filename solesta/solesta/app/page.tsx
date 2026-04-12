@@ -1,15 +1,15 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog"
 
 export default function LandingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -20,7 +20,7 @@ export default function LandingPage() {
   }, [])
 
   const handleTelegramRedirect = () => {
-    window.open('https://t.me/krmu_ticket_bot?start=register', '_blank')
+    window.open("https://t.me/krmu_ticket_bot?start=register", "_blank")
   }
 
   return (
@@ -50,28 +50,28 @@ export default function LandingPage() {
           />
           <button
             onClick={() => setIsModalOpen(true)}
-            className="absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[12%] cursor-pointer"
+            className="absolute bottom-[5%] left-1/2 h-[12%] w-[80%] -translate-x-1/2 cursor-pointer"
             aria-label="Register"
           />
         </div>
       )}
 
       {isDesktop && (
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <main className="flex-1 flex items-end justify-center pb-8 md:pb-16">
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <main className="flex flex-1 items-end justify-center pb-8 md:pb-16">
             <div className="flex flex-col items-center gap-4">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-white text-black px-10 py-4 rounded-full font-semibold text-xl shadow-lg hover:shadow-xl transition-shadow"
+                className="rounded-full bg-white px-10 py-4 text-xl font-semibold text-black shadow-lg transition-shadow hover:shadow-xl"
               >
                 Register <span className="font-bold">Now!</span>
               </button>
-              <p className="text-sm text-muted-foreground text-center px-4">
-                by clicking register you agree to our{' '}
+              <p className="px-4 text-center text-sm text-muted-foreground">
+                by clicking register you agree to our{" "}
                 <a href="#" className="underline hover:text-foreground">
                   terms of service
-                </a>{' '}
-                and{' '}
+                </a>{" "}
+                and{" "}
                 <a href="#" className="underline hover:text-foreground">
                   privacy policy
                 </a>
@@ -87,20 +87,26 @@ export default function LandingPage() {
             <DialogTitle>Join Solesta &apos;26</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <p className="font-semibold text-red-600">
+              KR Mangalam Hostellers: DO NOT book tickets from here. Your
+              tickets are to be paid through ICloudEMS App.
+            </p>
             <p>To register for Solesta &apos;26, please follow these steps:</p>
-            <ol className="list-decimal list-inside space-y-2 text-foreground">
+            <ol className="list-inside list-decimal space-y-2 text-foreground">
               <li>Login to your Telegram account</li>
               <li>Click the button below to open our bot</li>
-              <li>Press the <strong>Start</strong> button in the bot</li>
+              <li>
+                Press the <strong>Start</strong> button in the bot
+              </li>
             </ol>
             <p className="text-sm text-muted-foreground">
               Our bot will guide you through the registration process.
             </p>
           </div>
-          <div className="flex justify-center mt-4">
+          <div className="mt-4 flex justify-center">
             <Button
               onClick={handleTelegramRedirect}
-              className="bg-black hover:bg-black/90 text-white text-xl px-12 py-6 rounded-3xl"
+              className="rounded-3xl bg-black px-12 py-6 text-xl text-white hover:bg-black/90"
             >
               Book Tickets
             </Button>
