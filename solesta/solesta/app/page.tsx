@@ -3,24 +3,35 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+import { RegistrationDialog } from "@/components/RegistrationDialog"
+import { CheckStatusDialog } from "@/components/CheckStatusDialog"
 
 export default function LandingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isStatusOpen, setIsStatusOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     setIsDesktop(window.innerWidth >= 768)
   }, [])
 
-  const handleTelegramRedirect = () => {
-    window.open("https://t.me/krmu_ticket_bot?start=register", "_blank")
+  if (!mounted) {
+    return (
+      <div className="relative min-h-screen w-full overflow-hidden bg-[#5B1A1B]">
+        <div className="absolute inset-0">
+          <Image
+            src="/Mobile.png"
+            alt="Solesta 26 Mobile"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -66,6 +77,15 @@ export default function LandingPage() {
               >
                 Register <span className="font-bold">Now!</span>
               </button>
+              <div className="flex gap-4">
+                <Button
+                  variant="link"
+                  onClick={() => setIsStatusOpen(true)}
+                  className="text-white"
+                >
+                  Check Status
+                </Button>
+              </div>
               <p className="px-4 text-center text-sm text-muted-foreground">
                 by clicking register you agree to our{" "}
                 <a href="#" className="underline hover:text-foreground">
@@ -81,38 +101,8 @@ export default function LandingPage() {
         </div>
       )}
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Join Solesta &apos;26</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="font-semibold text-red-600">
-              KR Mangalam Hostellers: DO NOT book tickets from here. Your
-              tickets are to be paid through ICloudEMS App.
-            </p>
-            <p>To register for Solesta &apos;26, please follow these steps:</p>
-            <ol className="list-inside list-decimal space-y-2 text-foreground">
-              <li>Login to your Telegram account</li>
-              <li>Click the button below to open our bot</li>
-              <li>
-                Press the <strong>Start</strong> button in the bot
-              </li>
-            </ol>
-            <p className="text-sm text-muted-foreground">
-              Our bot will guide you through the registration process.
-            </p>
-          </div>
-          <div className="mt-4 flex justify-center">
-            <Button
-              onClick={handleTelegramRedirect}
-              className="rounded-3xl bg-black px-12 py-6 text-xl text-white hover:bg-black/90"
-            >
-              Book Tickets
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RegistrationDialog open={isModalOpen} onOpenChange={setIsModalOpen} />
+      <CheckStatusDialog open={isStatusOpen} onOpenChange={setIsStatusOpen} />
     </div>
   )
 }
