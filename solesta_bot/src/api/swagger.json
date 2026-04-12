@@ -1,0 +1,279 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Solesta API",
+    "version": "1.0.0",
+    "description": "REST API for Solesta event registrations"
+  },
+  "servers": [{ "url": "http://129.154.240.14:3001" }],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "summary": "Verify API key",
+        "security": [],
+        "responses": { "200": { "description": "Valid" }, "401": { "description": "Invalid" } }
+      }
+    },
+    "/api/v1/auth/user": {
+      "get": {
+        "summary": "Get user status",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [{ "name": "externalAppId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "User status" } }
+      }
+    },
+    "/api/v1/registration/start": {
+      "post": {
+        "summary": "Start registration",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "institution"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "institution": { "type": "string", "enum": ["krmu", "external"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Registration started" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/v1/registration/roll-number": {
+      "post": {
+        "summary": "Submit KRMU roll number",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "rollNumber"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "rollNumber": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Roll verified, proceed to OTP" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/v1/registration/email": {
+      "post": {
+        "summary": "Submit external student email",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "email"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "email": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Email recorded" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/v1/registration/otp/request": {
+      "post": {
+        "summary": "Request OTP",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId"],
+                "properties": {
+                  "externalAppId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "OTP sent" } }
+      }
+    },
+    "/api/v1/registration/otp/verify": {
+      "post": {
+        "summary": "Verify OTP",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "otp"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "otp": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "OTP verified" }, "400": { "description": "Invalid OTP" } }
+      }
+    },
+    "/api/v1/registration/details": {
+      "post": {
+        "summary": "Submit registration details",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "name", "course", "year"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "name": { "type": "string" },
+                  "course": { "type": "string" },
+                  "year": { "type": "string" },
+                  "college": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Registration created" } }
+      }
+    },
+    "/api/v1/registration/fresher": {
+      "post": {
+        "summary": "Submit fresher response",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "isFresher"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "isFresher": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Registration created" } }
+      }
+    },
+    "/api/v1/registration/status": {
+      "get": {
+        "summary": "Get registration status",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [{ "name": "externalAppId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Current status" } }
+      }
+    },
+    "/api/v1/registration/confirm-payment": {
+      "post": {
+        "summary": "Confirm payment",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "referenceId"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "referenceId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Payment confirmed" } }
+      }
+    },
+    "/api/v1/ticket": {
+      "get": {
+        "summary": "Get QR ticket",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [{ "name": "externalAppId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "QR code base64" }, "400": { "description": "Payment not completed" } }
+      }
+    },
+    "/api/v1/ticket/resend": {
+      "post": {
+        "summary": "Resend ticket via email",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["externalAppId", "referenceId"],
+                "properties": {
+                  "externalAppId": { "type": "string" },
+                  "referenceId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Email sent" } }
+      }
+    },
+    "/api/v1/admin/registrations": {
+      "get": {
+        "summary": "List registrations (admin)",
+        "security": [{ "ApiKeyAuth": [] }],
+        "responses": { "200": { "description": "Registrations list" } }
+      }
+    },
+    "/api/v1/admin/statistics": {
+      "get": {
+        "summary": "Get statistics (admin)",
+        "security": [{ "ApiKeyAuth": [] }],
+        "responses": { "200": { "description": "Statistics object" } }
+      }
+    },
+    "/api/v1/admin/export": {
+      "get": {
+        "summary": "Export CSV (admin)",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [{ "name": "type", "in": "query", "schema": { "type": "string", "enum": ["all", "paid", "fresher"] } }],
+        "responses": { "200": { "description": "CSV file" } }
+      }
+    }
+  }
+}

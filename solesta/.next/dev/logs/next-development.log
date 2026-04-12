@@ -1,0 +1,25 @@
+[00:04:37.864] Server  ERROR   ⨯ TurbopackInternalError: Failed to write app endpoint /_not-found/page
+
+Caused by:
+- Failed to restore task data (corrupted database or bug): Meta for <EcmascriptModulePartReference as ModuleReference>::resolve_reference (TaskId 92674))
+
+Debug info:
+- Execution of get_written_endpoint_with_issues_operation failed
+- Execution of endpoint_write_to_disk failed
+- Execution of <AppEndpoint as Endpoint>::output failed
+- Failed to write app endpoint /_not-found/page
+- Execution of AppEndpoint::output failed
+- Execution of AppProject::app_module_graphs failed
+- Execution of find_server_entries failed
+- Execution of primary_chunkable_referenced_modules failed
+- Failed to restore task data (corrupted database or bug): Meta for <EcmascriptModulePartReference as ModuleReference>::resolve_reference (TaskId 92674))
+  
+  Caused by:
+      0: Looking up data for TaskId 92674 from database failed
+      1: Unable to open static sorted file referenced from 00000028.meta
+      2: Unable to open static sorted file 00000025.sst
+      3: The system cannot find the path specified. (os error 3)
+[00:04:38.290] Server  ERROR   Error: ENOENT: no such file or directory, scandir 'D:\ideas-portal\solesta\app'
+[00:04:38.293] Server  ERROR   ⨯ "unhandledRejection:" Error: ENOENT: no such file or directory, scandir 'D:\ideas-portal\solesta\app'
+[00:04:38.295] Server  ERROR   ⨯ "unhandledRejection: " Error: ENOENT: no such file or directory, scandir 'D:\ideas-portal\solesta\app'
+[00:04:40.869] Server  LOG     ○ Compiling /_error ...
