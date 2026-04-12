@@ -1,17 +1,48 @@
 "use client"
 
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRegistration } from '@/hooks/useRegistration'
 
 export function PaymentStep() {
-  const { referenceId, paymentLink, feeAmount, isKrmu, confirmPayment, isLoading, error } = useRegistration()
+  const { referenceId, paymentLink, feeAmount, confirmPayment, goBack, isLoading, error, isKrmu } = useRegistration()
+  const [countdown, setCountdown] = useState(0)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [opened, setOpened] = useState(false)
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+        if (countdown === 1 && !opened) {
+          const link = paymentLink || (isKrmu 
+            ? 'https://p.ppsl.io/PYTMPS/Ro1Qfk' 
+            : 'https://p.ppsl.io/PYTMPS/UYrQfk')
+          window.open(link, '_blank')
+          setOpened(true)
+          setShowConfirm(true)
+        }
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [countdown, isKrmu, paymentLink, opened])
+
+  const handleOpenPayment = () => {
+    setCountdown(3)
+  }
+
+  const handleConfirm = () => {
+    confirmPayment()
+  }
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Payment</h2>
-      <p className="text-sm text-muted-foreground">
-        Reference ID: <span className="font-mono font-bold">{referenceId}</span>
-      </p>
+      
+      <div className="rounded-lg border p-4">
+        <p className="text-sm text-muted-foreground">Reference ID</p>
+        <p className="font-mono text-xl font-bold">{referenceId}</p>
+      </div>
       
       <p className="text-lg">
         Fee Amount: <span className="font-bold">₹{feeAmount}</span>
@@ -28,22 +59,32 @@ export function PaymentStep() {
         </ol>
       </div>
       
-      <a
-        href={paymentLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block w-full rounded-md bg-green-600 px-4 py-3 text-center text-white font-semibold hover:bg-green-700"
-      >
-        Open Payment Link
-      </a>
+      {countdown > 0 ? (
+        <Button disabled className="w-full py-6 text-lg">
+          Redirecting in {countdown}...
+        </Button>
+      ) : showConfirm ? (
+        <Button
+          onClick={handleConfirm}
+          disabled={isLoading}
+          className="w-full py-6 text-lg"
+        >
+          {isLoading ? 'Confirming...' : "I've Paid"}
+        </Button>
+      ) : (
+        <Button
+          onClick={handleOpenPayment}
+          className="w-full py-6 text-lg"
+        >
+          Open Payment Link
+        </Button>
+      )}
       
-      <Button
-        onClick={confirmPayment}
-        disabled={isLoading}
-        className="w-full py-6 text-lg"
-      >
-        {isLoading ? 'Confirming...' : "I've Paid"}
-      </Button>
+      {(!showConfirm || isLoading) && goBack && (
+        <Button variant="ghost" onClick={goBack} className="w-full">
+          Back
+        </Button>
+      )}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useRegistration } from '@/hooks/useRegistration'
 
 export function EmailInput() {
-  const { submitEmail, isLoading, error } = useRegistration()
+  const { submitEmail, goBack, isLoading, error } = useRegistration()
   const [email, setEmail] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,6 +33,12 @@ export function EmailInput() {
       <Button type="submit" disabled={isLoading || !email.includes('@')} className="w-full py-6 text-lg">
         {isLoading ? 'Sending OTP...' : 'Continue'}
       </Button>
+      
+      {goBack && (
+        <Button type="button" variant="ghost" onClick={goBack} className="w-full">
+          Back
+        </Button>
+      )}
     </form>
   )
 }

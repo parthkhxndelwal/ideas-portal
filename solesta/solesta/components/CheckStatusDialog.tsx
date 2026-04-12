@@ -21,15 +21,23 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
   const [loading, setLoading] = useState(false)
   const [showTicket, setShowTicket] = useState(false)
   const [ticket, setTicket] = useState<any>(null)
+  const [paymentCountdown, setPaymentCountdown] = useState<number | null>(null)
+
+  const [showCopied, setShowCopied] = useState(false)
 
   const handleSearch = async () => {
     if (!inputId) return
     setLoading(true)
     
-    const result = await api.getRegistrationStatus(inputId)
-    if (result.success && result.data) {
-      setStatus(result.data)
-    } else {
+    try {
+      const result = await api.searchByReference(inputId)
+      if (result.success && result.data?.exists) {
+        setStatus(result.data)
+      } else {
+        setStatus(null)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
       setStatus(null)
     }
     setLoading(false)
@@ -50,6 +58,38 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
       await api.resendTicket(inputId, ticket.referenceId)
       alert('Ticket sent to your email!')
     }
+  }
+
+  const handleMakePayment = async () => {
+    // Copy reference ID to clipboard
+    const referenceId = status.registration.referenceId
+    await navigator.clipboard.writeText(referenceId)
+    
+    // Show "Copied" message for 1 second
+    setShowCopied(true)
+    setTimeout(() => setShowCopied(false), 1000)
+    
+    // Start countdown after 1 second delay
+    setTimeout(() => {
+      setPaymentCountdown(3)
+      
+      // Countdown timer
+      const interval = setInterval(() => {
+        setPaymentCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(interval)
+            // Get payment link based on institution
+            const paymentLink = status.registration.isKrmu
+              ? 'https://p.ppsl.io/PYTMPS/Ro1Qfk'
+              : 'https://p.ppsl.io/PYTMPS/UYrQfk'
+            window.location.href = paymentLink
+            setPaymentCountdown(null)
+            return null
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }, 1000)
   }
 
   return (
@@ -104,24 +144,41 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
                 </div>
               </div>
               
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Payment Status</p>
-                <p className={`font-semibold text-lg ${status.registration.feePaid ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {status.registration.feePaid ? '✅ Paid' : '⏳ Pending'}
-                </p>
-                {status.registration.feePaid && (
-                  <p className="text-sm text-muted-foreground">Amount: ₹{status.registration.feeAmount}</p>
-                )}
-              </div>
+               <div className="rounded-lg border p-3">
+                 <p className="text-xs text-muted-foreground">Payment Status</p>
+                 <p className={`font-semibold text-lg ${status.registration.feePaid ? 'text-green-600' : 'text-yellow-600'}`}>
+                   {status.registration.feePaid ? '✅ Paid' : '⏳ Pending'}
+                 </p>
+                 {status.registration.feePaid ? (
+                   <p className="text-sm text-muted-foreground">Amount: ₹{status.registration.feeAmount}</p>
+                 ) : (
+                   <>
+                     <p className="text-sm text-muted-foreground mt-1">
+                       If payment is made, please wait 1-2 days for verification
+                     </p>
+                      <Button 
+                        onClick={handleMakePayment}
+                        disabled={paymentCountdown !== null || showCopied}
+                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                      >
+                        {showCopied
+                          ? '✅ Ref ID copied to clipboard'
+                          : paymentCountdown !== null
+                          ? `Redirecting in ${paymentCountdown}...`
+                          : '💳 Make Payment'}
+                      </Button>
+                   </>
+                 )}
+               </div>
               
-              {status.registration.isFresher !== undefined && (
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Fresher Competition</p>
-                  <p className="font-medium">
-                    {status.registration.isFresher ? '✅ Registered' : '❌ Not Participating'}
-                  </p>
-                </div>
-              )}
+               {status.registration.isFresher !== undefined && status.registration.year === '2025' && (
+                 <div className="rounded-lg border p-3">
+                   <p className="text-xs text-muted-foreground">Fresher Competition</p>
+                   <p className="font-medium">
+                     {status.registration.isFresher ? '✅ Registered' : '❌ Not Participating'}
+                   </p>
+                 </div>
+               )}
 
               {status.registration.hasQrCode && (
                 <Button onClick={handleViewTicket} className="w-full py-6 text-lg">
@@ -131,7 +188,7 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
 
               <Button 
                 variant="outline" 
-                onClick={() => { setStatus(null); setInputId(''); }}
+                onClick={() => { setStatus(null); setInputId(''); setPaymentCountdown(null); }}
                 className="w-full"
               >
                 Search Another

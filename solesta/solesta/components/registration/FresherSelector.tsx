@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useRegistration } from '@/hooks/useRegistration'
 
 export function FresherSelector() {
-  const { submitFresher, isLoading, error } = useRegistration()
+  const { submitFresher, goBack, isLoading, error } = useRegistration()
 
   return (
     <div className="space-y-4">
@@ -33,6 +33,12 @@ export function FresherSelector() {
           {isLoading ? 'Processing...' : 'No, skip'}
         </Button>
       </div>
+      
+      {goBack && (
+        <Button variant="ghost" onClick={goBack} className="w-full">
+          Back
+        </Button>
+      )}
     </div>
   )
 }

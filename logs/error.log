@@ -1,0 +1,12 @@
+2026-04-12 22:27:30 [ERROR]: Failed to start bot Missing required environment variables: BOT_TOKEN, DATABASE_URL, SMTP_USER, SMTP_PASS
+Error: Missing required environment variables: BOT_TOKEN, DATABASE_URL, SMTP_USER, SMTP_PASS
+    at validateConfig (D:\ideas-portal\solesta_bot\dist\utils\config.js:46:15)
+    at main (D:\ideas-portal\solesta_bot\dist\bot\index.js:17:37)
+    at Object.<anonymous> (D:\ideas-portal\solesta_bot\dist\bot\index.js:111:1)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14)
+    at Object..js (node:internal/modules/cjs/loader:1969:10)
+    at Module.load (node:internal/modules/cjs/loader:1552:32)
+    at Module._load (node:internal/modules/cjs/loader:1354:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47

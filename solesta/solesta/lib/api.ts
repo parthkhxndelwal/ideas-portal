@@ -1,5 +1,14 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
+const API_BASE_URL = '';
+
+function getDeviceToken(): string {
+  if (typeof window === 'undefined') return '';
+  let token = localStorage.getItem('solesta_device_token');
+  if (!token) {
+    token = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    localStorage.setItem('solesta_device_token', token);
+  }
+  return token;
+}
 
 interface ApiResponse<T> {
   success: boolean;
@@ -14,7 +23,6 @@ async function fetchApi<T>(
 ): Promise<ApiResponse<T>> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'X-API-Key': API_KEY,
     ...options.headers,
   };
 
@@ -47,6 +55,8 @@ export interface UserStatus {
     email: string;
     isKrmu: boolean;
     year: string;
+    rollNumber?: string;
+    course?: string;
     isFresher?: boolean;
     feeAmount: number;
     feePaid: boolean;
@@ -55,14 +65,24 @@ export interface UserStatus {
 }
 
 export interface RegistrationStatus {
+  exists?: boolean;
   state: string;
   isVerified: boolean;
   isKrmu: boolean;
+  userDetails?: {
+    name: string;
+    email: string;
+    rollNumber?: string;
+    course: string;
+    year: string;
+  };
   registration: {
     referenceId: string;
     name: string;
     email: string;
     isKrmu: boolean;
+    rollNumber?: string;
+    course: string;
     year: string;
     isFresher?: boolean;
     feeAmount: number;
@@ -71,40 +91,67 @@ export interface RegistrationStatus {
   } | null;
 }
 
-export const api = {
-  verifyKey: () => fetchApi<{ valid: boolean }>('/api/v1/auth/verify', { method: 'POST' }),
+export interface DisplayFeeData {
+  name: string;
+  email: string;
+  rollNumber?: string;
+  course: string;
+  year: string;
+  feeAmount: number;
+}
 
+export interface UserStatus {
+  exists: boolean;
+  state?: string;
+  isVerified?: boolean;
+  isKrmu?: boolean;
+  registration?: {
+    referenceId: string;
+    name: string;
+    email: string;
+    isKrmu: boolean;
+    year: string;
+    rollNumber?: string;
+    course?: string;
+    isFresher?: boolean;
+    feeAmount: number;
+    feePaid: boolean;
+    hasQrCode: boolean;
+  };
+}
+
+export const api = {
   getUserStatus: (externalAppId: string) =>
-    fetchApi<UserStatus>(`/api/v1/auth/user?externalAppId=${externalAppId}`),
+    fetchApi<UserStatus>(`/api/v1/auth?externalAppId=${externalAppId}`),
 
   startRegistration: (externalAppId: string, institution: 'krmu' | 'external') =>
-    fetchApi<{ state: string }>('/api/v1/registration/start', {
+    fetchApi<{ state: string }>(`/api/v1/registration?path=start`, {
       method: 'POST',
-      body: JSON.stringify({ externalAppId, institution }),
+      body: JSON.stringify({ externalAppId, institution, deviceToken: getDeviceToken() }),
     }),
 
   submitRollNumber: (externalAppId: string, rollNumber: string) =>
-    fetchApi<{ state: string; email: string }>('/api/v1/registration/roll-number', {
+    fetchApi<{ state: string; email: string }>(`/api/v1/registration?path=roll-number`, {
       method: 'POST',
-      body: JSON.stringify({ externalAppId, rollNumber }),
+      body: JSON.stringify({ externalAppId, rollNumber, deviceToken: getDeviceToken() }),
     }),
 
   submitEmail: (externalAppId: string, email: string) =>
-    fetchApi<{ state: string }>('/api/v1/registration/email', {
+    fetchApi<{ state: string }>(`/api/v1/registration?path=email`, {
       method: 'POST',
-      body: JSON.stringify({ externalAppId, email }),
+      body: JSON.stringify({ externalAppId, email, deviceToken: getDeviceToken() }),
     }),
 
   requestOtp: (externalAppId: string) =>
-    fetchApi<{ otpSent: boolean }>('/api/v1/registration/otp/request', {
+    fetchApi<{ otpSent: boolean }>(`/api/v1/registration?path=otp-request`, {
       method: 'POST',
-      body: JSON.stringify({ externalAppId }),
+      body: JSON.stringify({ externalAppId, deviceToken: getDeviceToken() }),
     }),
 
   verifyOtp: (externalAppId: string, otp: string) =>
-    fetchApi<{ state: string }>('/api/v1/registration/otp/verify', {
+    fetchApi<DisplayFeeData | { state: string }>(`/api/v1/registration?path=otp-verify`, {
       method: 'POST',
-      body: JSON.stringify({ externalAppId, otp }),
+      body: JSON.stringify({ externalAppId, otp, deviceToken: getDeviceToken() }),
     }),
 
   submitDetails: (
@@ -115,29 +162,38 @@ export const api = {
     college?: string
   ) =>
     fetchApi<{ referenceId: string; paymentLink: string; state: string }>(
-      '/api/v1/registration/details',
+      '/api/v1/registration?path=details',
       {
         method: 'POST',
-        body: JSON.stringify({ externalAppId, name, course, year, college }),
+        body: JSON.stringify({ externalAppId, name, course, year, college, deviceToken: getDeviceToken() }),
       }
     ),
 
   submitFresher: (externalAppId: string, isFresher: boolean) =>
     fetchApi<{ referenceId: string; paymentLink: string; isFresher: boolean; state: string }>(
-      '/api/v1/registration/fresher',
+      '/api/v1/registration?path=fresher',
       {
         method: 'POST',
-        body: JSON.stringify({ externalAppId, isFresher }),
+        body: JSON.stringify({ externalAppId, isFresher, deviceToken: getDeviceToken() }),
+      }
+    ),
+
+  confirmDetails: (externalAppId: string) =>
+    fetchApi<{ referenceId: string; paymentLink: string; isFresher: boolean; state: string }>(
+      '/api/v1/registration?path=confirm-details',
+      {
+        method: 'POST',
+        body: JSON.stringify({ externalAppId, deviceToken: getDeviceToken() }),
       }
     ),
 
   getRegistrationStatus: (externalAppId: string) =>
-    fetchApi<RegistrationStatus>(`/api/v1/registration/status?externalAppId=${externalAppId}`),
+    fetchApi<RegistrationStatus>(`/api/v1/registration?externalAppId=${externalAppId}`),
 
-  confirmPayment: (externalAppId: string, referenceId: string) =>
-    fetchApi<{ confirmed: boolean }>('/api/v1/registration/confirm-payment', {
+  confirmPayment: (referenceId: string) =>
+    fetchApi<{ confirmed: boolean }>('/api/v1/registration?path=confirm-payment', {
       method: 'POST',
-      body: JSON.stringify({ externalAppId, referenceId }),
+      body: JSON.stringify({ referenceId }),
     }),
 
   getTicket: (externalAppId: string) =>
@@ -145,8 +201,11 @@ export const api = {
       `/api/v1/ticket?externalAppId=${externalAppId}`
     ),
 
+  searchByReference: (referenceId: string) =>
+    fetchApi<RegistrationStatus>(`/api/v1/registration?path=search&referenceId=${referenceId}`),
+
   resendTicket: (externalAppId: string, referenceId: string) =>
-    fetchApi<{ sent: boolean }>('/api/v1/ticket/resend', {
+    fetchApi<{ sent: boolean }>('/api/v1/ticket', {
       method: 'POST',
       body: JSON.stringify({ externalAppId, referenceId }),
     }),

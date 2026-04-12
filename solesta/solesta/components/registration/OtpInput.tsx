@@ -1,19 +1,24 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRegistration } from '@/hooks/useRegistration'
 
 export function OtpInput() {
-  const { email, requestOtp, verifyOtp, isLoading, error } = useRegistration()
+  const { email, requestOtp, verifyOtp, goBack, isLoading, error } = useRegistration()
   const [otp, setOtp] = useState('')
   const [canResend, setCanResend] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const otpRequestedRef = useRef(false)
 
   useEffect(() => {
-    requestOtp()
-    setCanResend(false)
-    setCountdown(60)
+    // Only request OTP once when component mounts
+    if (!otpRequestedRef.current) {
+      otpRequestedRef.current = true
+      requestOtp()
+      setCanResend(false)
+      setCountdown(60)
+    }
   }, [requestOtp])
 
   useEffect(() => {
@@ -69,6 +74,12 @@ export function OtpInput() {
           <span>Resend OTP in {countdown}s</span>
         )}
       </div>
+      
+      {goBack && (
+        <Button type="button" variant="ghost" onClick={goBack} className="w-full">
+          Back
+        </Button>
+      )}
     </form>
   )
 }

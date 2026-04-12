@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { authMiddleware } from './middleware/auth';
 import authRoutes from './routes/auth';
 import registrationRoutes from './routes/registration';
@@ -8,6 +9,7 @@ import swaggerDocument from './swagger.json';
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 app.get('/health', (_, res) => {

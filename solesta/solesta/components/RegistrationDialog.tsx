@@ -4,14 +4,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useRegistration } from '@/hooks/useRegistration'
 import {
   InstitutionSelector,
+  WelcomeStep,
   RollNumberInput,
   EmailInput,
   OtpInput,
   DetailsInput,
   FresherSelector,
+  ReferenceIdStep,
   PaymentStep,
   CompletedStep,
   TicketStep,
+  DisplayFeeStep,
 } from '@/components/registration'
 
 interface RegistrationDialogProps {
@@ -20,15 +23,16 @@ interface RegistrationDialogProps {
 }
 
 export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogProps) {
-  const { step, reset } = useRegistration()
+  const { step, proceedPastWelcome } = useRegistration()
 
   const handleClose = () => {
     onOpenChange(false)
-    reset()
   }
 
   const renderStep = () => {
     switch (step) {
+      case 'welcome':
+        return <WelcomeStep onProceed={proceedPastWelcome} />
       case 'select-institution':
         return <InstitutionSelector />
       case 'roll-number':
@@ -39,8 +43,12 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
         return <OtpInput />
       case 'details':
         return <DetailsInput />
+      case 'display-fee':
+        return <DisplayFeeStep />
       case 'fresher':
         return <FresherSelector />
+      case 'reference-id':
+        return <ReferenceIdStep />
       case 'payment':
         return <PaymentStep />
       case 'completed':
@@ -54,6 +62,8 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
 
   const getTitle = () => {
     switch (step) {
+      case 'welcome':
+        return 'Welcome to Solesta \'26'
       case 'select-institution':
         return 'Join Solesta \'26'
       case 'roll-number':
@@ -64,8 +74,12 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
         return 'Verify Email'
       case 'details':
         return 'Your Details'
+      case 'display-fee':
+        return 'Confirm Details'
       case 'fresher':
         return 'Fresher Competition'
+      case 'reference-id':
+        return 'Reference ID'
       case 'payment':
         return 'Complete Payment'
       case 'completed':
@@ -80,14 +94,29 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{getTitle()}</DialogTitle>
-          <DialogDescription>
-            {step === 'completed' || step === 'ticket'
-              ? 'Thank you for registering!'
+        {step !== 'completed' && step !== 'ticket' && (
+          <DialogHeader>
+            <DialogTitle>{getTitle()}</DialogTitle>
+            <DialogDescription>
+              {step === 'display-fee'
+              ? 'Verify your information before proceeding'
               : 'Complete the steps below to register for Solesta \'26'}
-          </DialogDescription>
-        </DialogHeader>
+            </DialogDescription>
+          </DialogHeader>
+        )}
+        
+        {step === 'completed' && (
+          <DialogHeader>
+            <DialogTitle>Registration Complete</DialogTitle>
+            <DialogDescription>Thank you for registering!</DialogDescription>
+          </DialogHeader>
+        )}
+        
+        {step === 'ticket' && (
+          <DialogHeader>
+            <DialogTitle>Your Ticket</DialogTitle>
+          </DialogHeader>
+        )}
         
         <div className="mt-4">
           {renderStep()}

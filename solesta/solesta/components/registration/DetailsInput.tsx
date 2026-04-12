@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useRegistration } from '@/hooks/useRegistration'
 
 export function DetailsInput() {
-  const { submitDetails, isLoading, error } = useRegistration()
+  const { submitDetails, goBack, isLoading, error } = useRegistration()
   const [name, setName] = useState('')
   const [course, setCourse] = useState('')
   const [year, setYear] = useState('')
@@ -69,6 +69,12 @@ export function DetailsInput() {
       <Button type="submit" disabled={isLoading || !isValid} className="w-full py-6 text-lg">
         {isLoading ? 'Creating...' : 'Complete Registration'}
       </Button>
+      
+      {goBack && (
+        <Button type="button" variant="ghost" onClick={goBack} className="w-full">
+          Back
+        </Button>
+      )}
     </form>
   )
 }
