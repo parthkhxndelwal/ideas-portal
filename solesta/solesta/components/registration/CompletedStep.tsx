@@ -22,27 +22,27 @@ export function CompletedStep() {
         </svg>
       </div>
       
-      <p className="text-muted-foreground flex items-center justify-center gap-2">
-        Your reference ID is <span className="font-mono font-bold">{referenceId}</span>
+      <p className="text-muted-foreground flex flex-col items-center justify-center gap-2 text-lg">
+        Your reference ID is <span className="font-mono font-bold text-xl">{referenceId}</span>
         <button onClick={handleCopy} className="p-1 hover:bg-muted rounded">
-          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+          {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
         </button>
       </p>
       
-      <p className="text-sm text-muted-foreground">
+      <p className="text-base text-muted-foreground">
         Your ticket will be mailed to you within 1-2 days.
       </p>
       
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         If you haven't received the ticket after 2 days, contact support.
       </p>
 
       {error && (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-base text-red-500">{error}</p>
       )}
 
       {registrationStatus?.registration?.feePaid && (
-        <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+        <div className="rounded-lg bg-green-50 p-3 text-base text-green-700">
           ✓ Payment confirmed! Your ticket is being processed.
         </div>
       )}
