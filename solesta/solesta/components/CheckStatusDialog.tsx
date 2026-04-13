@@ -156,17 +156,17 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
                      <p className="text-sm text-muted-foreground mt-1">
                        If payment is made, please wait 1-2 days for verification
                      </p>
-                      <Button 
-                        onClick={handleMakePayment}
-                        disabled={paymentCountdown !== null || showCopied}
-                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
-                      >
-                        {showCopied
-                          ? '✅ Ref ID copied to clipboard'
-                          : paymentCountdown !== null
-                          ? `Redirecting in ${paymentCountdown}...`
-                          : '💳 Make Payment'}
-                      </Button>
+                       <Button 
+                         onClick={handleMakePayment}
+                         disabled={paymentCountdown !== null || showCopied}
+                         className="w-full mt-3"
+                       >
+                         {showCopied
+                           ? '✅ Ref ID copied to clipboard'
+                           : paymentCountdown !== null
+                           ? `Redirecting in ${paymentCountdown}...`
+                           : 'Make Payment'}
+                       </Button>
                    </>
                  )}
                </div>

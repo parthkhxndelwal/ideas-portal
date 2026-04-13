@@ -18,7 +18,12 @@ export function PaymentStep() {
           const link = paymentLink || (isKrmu 
             ? 'https://p.ppsl.io/PYTMPS/Ro1Qfk' 
             : 'https://p.ppsl.io/PYTMPS/UYrQfk')
-          window.open(link, '_blank')
+          // Try to open in new window, fallback to direct navigation on mobile
+          const newWindow = window.open(link, '_blank')
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            // If popup blocked or on mobile, use direct navigation
+            window.location.href = link
+          }
           setOpened(true)
           setShowConfirm(true)
         }
