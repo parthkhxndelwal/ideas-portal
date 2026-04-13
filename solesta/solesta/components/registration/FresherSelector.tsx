@@ -24,18 +24,10 @@ export function FresherSelector() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Mr. & Mrs. Fresher</h2>
-      <p className="text-sm text-muted-foreground">
-        Would you like to participate in the Mr. & Mrs. Fresher competition?
-      </p>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <p className="text-sm">
-          Click the button below to open the registration form for Mr. & Mrs.
-          Fresher competition. You can fill it out in a new tab while keeping
-          this form open.
-        </p>
+      <div className="space-y-3">
         <Button
           onClick={handleOpenForm}
           variant={hasClickedForm ? "default" : "outline"}
@@ -44,9 +36,7 @@ export function FresherSelector() {
         >
           {hasClickedForm ? "✓ Form Opened" : "Open Registration Form"}
         </Button>
-      </div>
 
-      <div className="grid gap-3">
         <Button
           onClick={handleContinue}
           disabled={isLoading}
