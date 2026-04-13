@@ -23,7 +23,9 @@ export function FresherSelector() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Mr. & Mrs. Fresher</h2>
+      <h2 className="text-xl font-semibold">
+        Mr. & Mrs. Fresher Competition 2026
+      </h2>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
