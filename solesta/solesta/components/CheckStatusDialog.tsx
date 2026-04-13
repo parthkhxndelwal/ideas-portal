@@ -15,8 +15,11 @@ interface CheckStatusDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps) {
-  const [inputId, setInputId] = useState('')
+export function CheckStatusDialog({
+  open,
+  onOpenChange,
+}: CheckStatusDialogProps) {
+  const [inputId, setInputId] = useState("")
   const [status, setStatus] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [showTicket, setShowTicket] = useState(false)
@@ -28,7 +31,7 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
   const handleSearch = async () => {
     if (!inputId) return
     setLoading(true)
-    
+
     try {
       const result = await api.searchByReference(inputId)
       if (result.success && result.data?.exists) {
@@ -37,7 +40,7 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
         setStatus(null)
       }
     } catch (error) {
-      console.error('Search error:', error)
+      console.error("Search error:", error)
       setStatus(null)
     }
     setLoading(false)
@@ -56,7 +59,7 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
   const handleResendTicket = async () => {
     if (ticket) {
       await api.resendTicket(inputId, ticket.referenceId)
-      alert('Ticket sent to your email!')
+      alert("Ticket sent to your email!")
     }
   }
 
@@ -64,15 +67,15 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
     // Copy reference ID to clipboard
     const referenceId = status.registration.referenceId
     await navigator.clipboard.writeText(referenceId)
-    
+
     // Show "Copied" message for 1 second
     setShowCopied(true)
     setTimeout(() => setShowCopied(false), 1000)
-    
+
     // Start countdown after 1 second delay
     setTimeout(() => {
       setPaymentCountdown(3)
-      
+
       // Countdown timer
       const interval = setInterval(() => {
         setPaymentCountdown((prev) => {
@@ -80,9 +83,9 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
             clearInterval(interval)
             // Get payment link based on institution
             const paymentLink = status.registration.isKrmu
-              ? 'https://p.ppsl.io/PYTMPS/Ro1Qfk'
-              : 'https://p.ppsl.io/PYTMPS/UYrQfk'
-            window.location.href = paymentLink
+              ? "https://p.ppsl.io/PYTMPS/Ro1Qfk"
+              : "https://p.ppsl.io/PYTMPS/UYrQfk"
+            window.open(paymentLink, "_blank")
             setPaymentCountdown(null)
             return null
           }
@@ -94,11 +97,11 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Check Registration Status</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {!status && (
             <div className="flex gap-2">
@@ -110,7 +113,7 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2"
               />
               <Button onClick={handleSearch} disabled={!inputId || loading}>
-                {loading ? '...' : 'Check'}
+                {loading ? "..." : "Check"}
               </Button>
             </div>
           )}
@@ -119,9 +122,11 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
             <div className="space-y-3">
               <div className="rounded-lg border p-4">
                 <p className="text-sm text-muted-foreground">Reference ID</p>
-                <p className="font-mono font-bold text-lg">{status.registration.referenceId}</p>
+                <p className="font-mono text-lg font-bold">
+                  {status.registration.referenceId}
+                </p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Name</p>
@@ -136,59 +141,80 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Institution</p>
-                  <p className="font-medium">{status.registration.isKrmu ? 'KRMU' : 'External'}</p>
+                  <p className="font-medium">
+                    {status.registration.isKrmu ? "KRMU" : "External"}
+                  </p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Year</p>
                   <p className="font-medium">{status.registration.year}</p>
                 </div>
               </div>
-              
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Payment Status</p>
-                  <p className={`font-semibold text-lg ${status.registration.feePaid ? 'text-green-600' : 'text-amber-600'}`}>
-                    {status.registration.feePaid ? '✅ Paid' : '🔄 Under Review'}
+
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Payment Status</p>
+                <p
+                  className={`text-lg font-semibold ${status.registration.feePaid ? "text-green-600" : "text-amber-600"}`}
+                >
+                  {status.registration.feePaid ? "✅ Paid" : "🔄 Under Review"}
+                </p>
+                {status.registration.feePaid ? (
+                  <p className="text-sm text-muted-foreground">
+                    Amount: ₹{status.registration.feeAmount}
                   </p>
-                  {status.registration.feePaid ? (
-                    <p className="text-sm text-muted-foreground">Amount: ₹{status.registration.feeAmount}</p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Your payment is being verified. Please wait 1-2 days.
-                      </p>
-                        <Button 
-                          onClick={handleMakePayment}
-                          disabled={paymentCountdown !== null || showCopied}
-                          className="w-full mt-3"
-                        >
-                          {showCopied
-                            ? '✅ Ref ID copied to clipboard'
-                            : paymentCountdown !== null
-                            ? `Redirecting in ${paymentCountdown}...`
-                            : 'Make Payment'}
-                        </Button>
-                    </>
-                  )}
-                </div>
-              
-               {status.registration.isFresher !== undefined && status.registration.year === '2025' && (
-                 <div className="rounded-lg border p-3">
-                   <p className="text-xs text-muted-foreground">Fresher Competition</p>
-                   <p className="font-medium">
-                     {status.registration.isFresher ? '✅ Registered' : '❌ Not Participating'}
-                   </p>
-                 </div>
-               )}
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Your payment is being verified. Please wait 1-2 days.
+                    </p>
+                    <Button
+                      onClick={handleMakePayment}
+                      disabled={paymentCountdown !== null || showCopied}
+                      className="mt-3 w-full"
+                    >
+                      {showCopied
+                        ? "✅ Ref ID copied to clipboard"
+                        : paymentCountdown !== null
+                          ? `Redirecting in ${paymentCountdown}...`
+                          : "Make Payment"}
+                    </Button>
+                    <p className="mt-2 text-xs text-yellow-600">
+                      (Avoid if you have already paid)
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {status.registration.isFresher !== undefined &&
+                status.registration.year === "2025" && (
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Fresher Competition
+                    </p>
+                    <p className="font-medium">
+                      {status.registration.isFresher
+                        ? "✅ Registered"
+                        : "❌ Not Participating"}
+                    </p>
+                  </div>
+                )}
 
               {status.registration.hasQrCode && (
-                <Button onClick={handleViewTicket} className="w-full py-6 text-lg">
+                <Button
+                  onClick={handleViewTicket}
+                  className="w-full py-6 text-lg"
+                >
                   🎫 View Ticket
                 </Button>
               )}
 
-              <Button 
-                variant="outline" 
-                onClick={() => { setStatus(null); setInputId(''); setPaymentCountdown(null); }}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatus(null)
+                  setInputId("")
+                  setPaymentCountdown(null)
+                }}
                 className="w-full"
               >
                 Search Another
@@ -197,11 +223,16 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
           )}
 
           {status && !status.registration && (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground">No registration found for this reference ID.</p>
-              <Button 
-                variant="outline" 
-                onClick={() => { setStatus(null); setInputId(''); }}
+            <div className="py-4 text-center">
+              <p className="text-muted-foreground">
+                No registration found for this reference ID.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatus(null)
+                  setInputId("")
+                }}
                 className="mt-4"
               >
                 Try Again
@@ -219,7 +250,11 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
               </div>
               <p className="mb-1 text-lg font-bold">{ticket.name}</p>
               <p className="mb-4 font-mono text-sm">{ticket.referenceId}</p>
-              <Button onClick={handleResendTicket} variant="outline" className="mb-2 w-full">
+              <Button
+                onClick={handleResendTicket}
+                variant="outline"
+                className="mb-2 w-full"
+              >
                 📧 Resend to Email
               </Button>
               <Button onClick={() => setShowTicket(false)} className="w-full">
