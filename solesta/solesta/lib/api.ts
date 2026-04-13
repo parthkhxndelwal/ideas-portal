@@ -32,8 +32,28 @@ async function fetchApi<T>(
       headers,
     })
 
-    const data = await response.json()
-    return data
+    const text = await response.text()
+
+    // Handle empty response
+    if (!text) {
+      return {
+        success: false,
+        error: "EMPTY_RESPONSE",
+        message: "Received empty response from server.",
+      }
+    }
+
+    try {
+      const data = JSON.parse(text)
+      return data
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError, "Response text:", text)
+      return {
+        success: false,
+        error: "PARSE_ERROR",
+        message: "Failed to parse server response.",
+      }
+    }
   } catch (error) {
     console.error("API Error:", error)
     return {

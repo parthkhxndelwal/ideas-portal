@@ -21,6 +21,8 @@ export function InstitutionSelector() {
         }
       } catch (err) {
         console.error("Failed to fetch config:", err)
+        // Default to true if config fetch fails
+        setEnableExternalRegistration(true)
       } finally {
         setLoadingConfig(false)
       }
@@ -42,7 +44,7 @@ export function InstitutionSelector() {
       <div className="grid gap-3">
         <Button
           onClick={() => handleClick("krmu")}
-          disabled={isLoading || loadingConfig}
+          disabled={isLoading}
           className="w-full py-6 text-lg"
         >
           {selected === "krmu" && isLoading ? "Loading..." : "KRMU Student"}
@@ -51,7 +53,7 @@ export function InstitutionSelector() {
         {enableExternalRegistration && (
           <Button
             onClick={() => handleClick("external")}
-            disabled={isLoading || loadingConfig}
+            disabled={isLoading}
             variant="outline"
             className="w-full py-6 text-lg"
           >
