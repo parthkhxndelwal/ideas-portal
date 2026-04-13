@@ -1,10 +1,11 @@
 "use client"
 
-import { Button } from '@/components/ui/button'
-import { useRegistration } from '@/hooks/useRegistration'
+import { Button } from "@/components/ui/button"
+import { useRegistration } from "@/hooks/useRegistration"
 
 export function DisplayFeeStep() {
-  const { userDetails, feeAmount, confirmDetails, goBack, isLoading, error } = useRegistration()
+  const { userDetails, feeAmount, confirmDetails, goBack, isLoading, error } =
+    useRegistration()
 
   const handleConfirm = () => {
     confirmDetails()
@@ -47,12 +48,16 @@ export function DisplayFeeStep() {
         </div>
         <div className="flex justify-between border-t pt-3">
           <span className="font-semibold">Registration Fee</span>
-          <span className="font-semibold">₹{feeAmount}</span>
+          <span className="font-semibold text-white">₹{feeAmount}</span>
         </div>
       </div>
 
-      <Button onClick={handleConfirm} disabled={isLoading} className="w-full py-6 text-lg">
-        {isLoading ? 'Processing...' : 'Proceed to Payment'}
+      <Button
+        onClick={handleConfirm}
+        disabled={isLoading}
+        className="w-full py-6 text-lg"
+      >
+        {isLoading ? "Processing..." : "Proceed to Payment"}
       </Button>
 
       {goBack && (
