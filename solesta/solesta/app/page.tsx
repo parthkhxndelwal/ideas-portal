@@ -16,7 +16,10 @@ export default function LandingPage() {
     <div className="relative min-h-screen w-full overflow-hidden bg-[#5B1A1B]">
       {/* Background Image */}
       {/* Mobile Background - 100% height, horizontally centered */}
-      <div className="absolute inset-0 md:hidden">
+      <div
+        className="absolute inset-0 md:hidden"
+        style={{ filter: "brightness(0.8)" }}
+      >
         <Image
           src="/solesta-bg.jpeg"
           alt="Solesta 26 Mobile"
@@ -28,7 +31,10 @@ export default function LandingPage() {
       </div>
 
       {/* Desktop Background - 100% width, vertically centered */}
-      <div className="absolute inset-0 hidden md:block">
+      <div
+        className="absolute inset-0 hidden md:block"
+        style={{ filter: "brightness(0.8)" }}
+      >
         <Image
           src="/solesta-bg.jpeg"
           alt="Solesta 26 Desktop"
