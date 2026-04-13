@@ -57,8 +57,6 @@ export function PaymentStep() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Payment</h2>
-
       <div className="rounded-lg border p-4">
         <p className="text-sm text-muted-foreground">Reference ID</p>
         <p className="font-mono text-xl font-bold">{referenceId}</p>
