@@ -59,7 +59,7 @@ export function InstitutionSelector() {
           >
             {selected === "external" && isLoading
               ? "Loading..."
-              : "External Student"}
+              : "Other University"}
           </Button>
         )}
       </div>

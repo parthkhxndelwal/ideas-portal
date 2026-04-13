@@ -68,7 +68,7 @@ export function PaymentStep() {
         <p className="text-sm text-muted-foreground">Ticket Price</p>
         <p className="text-lg font-bold text-white">₹{feeAmount}</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          {isKrmu ? "KRMU Student" : "External Student"} • Solesta 2026
+          {isKrmu ? "KRMU Student" : "Other University"} • Solesta 2026
         </p>
       </div>
 
