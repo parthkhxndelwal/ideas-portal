@@ -11,7 +11,10 @@ import {
   UserState,
 } from "@/lib/server/stateMachine"
 import { createAndSendOtp, verifyOtp } from "@/lib/server/otp"
-import { findStudentByRollNumber } from "@/lib/server/studentData"
+import {
+  findStudentByRollNumber,
+  createNewStudent,
+} from "@/lib/server/studentData"
 import {
   createRegistration,
   getRegistrationByExternalAppId,
@@ -31,6 +34,10 @@ export async function POST(request: NextRequest) {
       return handleStart(body)
     } else if (path === "roll-number") {
       return handleRollNumber(body)
+    } else if (path === "roll-number-confirm") {
+      return handleRollNumberConfirm(body)
+    } else if (path === "new-student-details") {
+      return handleNewStudentDetails(body)
     } else if (path === "email") {
       return handleEmailInput(body)
     } else if (path === "otp-request") {
@@ -237,15 +244,27 @@ async function handleRollNumber(body: any) {
   }
 
   const student = await findStudentByRollNumber(rollNumber)
+
+  // If student not found, ask for confirmation
   if (!student) {
-    return NextResponse.json(
+    await updateStateData(
+      { externalAppId },
       {
-        success: false,
-        error: "STUDENT_NOT_FOUND",
-        message: "Roll number not found in database.",
-      },
-      { status: 400 }
+        rollNumber,
+        email: `${rollNumber}@krmu.edu.in`,
+      }
     )
+
+    await updateUserState({ externalAppId }, UserState.ROLL_NUMBER_CONFIRM)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        state: UserState.ROLL_NUMBER_CONFIRM,
+        message: `Are you sure ${rollNumber} is your right roll number?`,
+        rollNumber,
+      },
+    })
   }
 
   // Check for duplicate registration
@@ -1045,4 +1064,177 @@ async function handleOtpVerifyAfterSkip(
     data: { state: UserState.MANUAL_DETAILS, alreadyVerified: true },
     message: "Enter your details.",
   })
+}
+
+async function handleRollNumberConfirm(body: any) {
+  const { externalAppId, confirmed, deviceToken } = body
+
+  if (!externalAppId || confirmed === undefined) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "MISSING_PARAM",
+        message: "externalAppId and confirmed are required.",
+      },
+      { status: 400 }
+    )
+  }
+
+  const user = await getUserByExternalAppId(externalAppId)
+  if (!user) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "USER_NOT_FOUND",
+        message: "Please start with /start.",
+      },
+      { status: 400 }
+    )
+  }
+
+  const stateData = user.stateData as any
+
+  if (confirmed) {
+    // User confirmed the roll number is correct
+    // Move to OTP verification to send OTP to roll_number@krmu.edu.in
+    await updateStateData(
+      { externalAppId },
+      {
+        isNewStudent: true,
+        deviceToken,
+      }
+    )
+
+    await updateUserState({ externalAppId }, UserState.OTP_VERIFICATION)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        state: UserState.OTP_VERIFICATION,
+        email: stateData.email,
+        message: "We'll send an OTP to verify your email.",
+      },
+    })
+  } else {
+    // User wants to edit the roll number
+    await updateUserState({ externalAppId }, UserState.ENTER_ROLL_NUMBER)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        state: UserState.ENTER_ROLL_NUMBER,
+        message: "Please enter your roll number again.",
+      },
+    })
+  }
+}
+
+async function handleNewStudentDetails(body: any) {
+  const { externalAppId, name, course, year } = body
+
+  if (!externalAppId || !name || !course || !year) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "MISSING_PARAM",
+        message: "externalAppId, name, course, and year are required.",
+      },
+      { status: 400 }
+    )
+  }
+
+  const user = await getUserByExternalAppId(externalAppId)
+  if (!user) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "USER_NOT_FOUND",
+        message: "Please start with /start.",
+      },
+      { status: 400 }
+    )
+  }
+
+  const stateData = user.stateData as any
+  const rollNumber = stateData?.rollNumber
+
+  if (!rollNumber) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "MISSING_DATA",
+        message: "Roll number not found in user state.",
+      },
+      { status: 400 }
+    )
+  }
+
+  // Check for duplicate registration by roll number
+  const duplicateCheck = await checkDuplicateRegistration(rollNumber)
+  if (duplicateCheck.exists) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "DUPLICATE_REGISTRATION",
+        message: `You have already registered with this roll number. Your reference ID is ${duplicateCheck.registration.referenceId}. Use "Check Status" to view your registration.`,
+      },
+      { status: 400 }
+    )
+  }
+
+  // Create the new student in the database
+  try {
+    const email = stateData.email || `${rollNumber}@krmu.edu.in`
+    await createNewStudent(rollNumber, name, course, year, email)
+
+    // Update user state with the new details
+    await updateStateData(
+      { externalAppId },
+      {
+        name,
+        course,
+        year,
+        email,
+      }
+    )
+
+    // Move to fresher selection (for KRMU students)
+    const isFirstYear = year === "1" || year === 1
+    if (isFirstYear) {
+      await updateUserState({ externalAppId }, UserState.FRESHER_SELECTION)
+      return NextResponse.json({
+        success: true,
+        data: {
+          state: UserState.FRESHER_SELECTION,
+          message: "Would you like to participate in Mr. & Mrs. Fresher?",
+        },
+      })
+    }
+
+    // Move to display fee for non-first-year students
+    await updateUserState({ externalAppId }, UserState.DISPLAY_FEE)
+    return NextResponse.json({
+      success: true,
+      data: {
+        state: UserState.DISPLAY_FEE,
+        name,
+        email,
+        rollNumber,
+        course,
+        year,
+        feeAmount: config.feeKrmu,
+        message: "Please confirm your details.",
+      },
+    })
+  } catch (error: any) {
+    console.error("Error creating new student:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "DATABASE_ERROR",
+        message: "Failed to create student record. Please try again.",
+      },
+      { status: 500 }
+    )
+  }
 }

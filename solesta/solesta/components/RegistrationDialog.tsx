@@ -1,11 +1,19 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { useRegistration } from '@/hooks/useRegistration'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { useRegistration } from "@/hooks/useRegistration"
 import {
   InstitutionSelector,
   WelcomeStep,
   RollNumberInput,
+  RollNumberConfirm,
+  NewStudentDetailsForm,
   EmailInput,
   OtpInput,
   DetailsInput,
@@ -15,14 +23,17 @@ import {
   CompletedStep,
   TicketStep,
   DisplayFeeStep,
-} from '@/components/registration'
+} from "@/components/registration"
 
 interface RegistrationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogProps) {
+export function RegistrationDialog({
+  open,
+  onOpenChange,
+}: RegistrationDialogProps) {
   const { step, proceedPastWelcome } = useRegistration()
 
   const handleClose = () => {
@@ -31,29 +42,33 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
 
   const renderStep = () => {
     switch (step) {
-      case 'welcome':
+      case "welcome":
         return <WelcomeStep onProceed={proceedPastWelcome} />
-      case 'select-institution':
+      case "select-institution":
         return <InstitutionSelector />
-      case 'roll-number':
+      case "roll-number":
         return <RollNumberInput />
-      case 'email':
+      case "roll-number-confirm":
+        return <RollNumberConfirm />
+      case "new-student-details":
+        return <NewStudentDetailsForm />
+      case "email":
         return <EmailInput />
-      case 'otp':
+      case "otp":
         return <OtpInput />
-      case 'details':
+      case "details":
         return <DetailsInput />
-      case 'display-fee':
+      case "display-fee":
         return <DisplayFeeStep />
-      case 'fresher':
+      case "fresher":
         return <FresherSelector />
-      case 'reference-id':
+      case "reference-id":
         return <ReferenceIdStep />
-      case 'payment':
+      case "payment":
         return <PaymentStep />
-      case 'completed':
+      case "completed":
         return <CompletedStep />
-      case 'ticket':
+      case "ticket":
         return <TicketStep />
       default:
         return <InstitutionSelector />
@@ -62,65 +77,63 @@ export function RegistrationDialog({ open, onOpenChange }: RegistrationDialogPro
 
   const getTitle = () => {
     switch (step) {
-      case 'welcome':
-        return 'Welcome to Solesta \'26'
-      case 'select-institution':
-        return 'Join Solesta \'26'
-      case 'roll-number':
-        return 'KRMU Registration'
-      case 'email':
-        return 'External Registration'
-      case 'otp':
-        return 'Verify Email'
-      case 'details':
-        return 'Your Details'
-      case 'display-fee':
-        return 'Confirm Details'
-      case 'fresher':
-        return 'Fresher Competition'
-      case 'reference-id':
-        return 'Reference ID'
-      case 'payment':
-        return 'Complete Payment'
-      case 'completed':
-        return 'Registration Complete'
-      case 'ticket':
-        return 'Your Ticket'
+      case "welcome":
+        return "Welcome to Solesta '26"
+      case "select-institution":
+        return "Join Solesta '26"
+      case "roll-number":
+        return "KRMU Registration"
+      case "email":
+        return "External Registration"
+      case "otp":
+        return "Verify Email"
+      case "details":
+        return "Your Details"
+      case "display-fee":
+        return "Confirm Details"
+      case "fresher":
+        return "Fresher Competition"
+      case "reference-id":
+        return "Reference ID"
+      case "payment":
+        return "Complete Payment"
+      case "completed":
+        return "Registration Complete"
+      case "ticket":
+        return "Your Ticket"
       default:
-        return 'Solesta \'26'
+        return "Solesta '26"
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        {step !== 'completed' && step !== 'ticket' && (
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+        {step !== "completed" && step !== "ticket" && (
           <DialogHeader>
             <DialogTitle>{getTitle()}</DialogTitle>
             <DialogDescription>
-              {step === 'display-fee'
-              ? 'Verify your information before proceeding'
-              : 'Complete the steps below to register for Solesta \'26'}
+              {step === "display-fee"
+                ? "Verify your information before proceeding"
+                : "Complete the steps below to register for Solesta '26"}
             </DialogDescription>
           </DialogHeader>
         )}
-        
-        {step === 'completed' && (
+
+        {step === "completed" && (
           <DialogHeader>
             <DialogTitle>Registration Complete</DialogTitle>
             <DialogDescription>Thank you for registering!</DialogDescription>
           </DialogHeader>
         )}
-        
-        {step === 'ticket' && (
+
+        {step === "ticket" && (
           <DialogHeader>
             <DialogTitle>Your Ticket</DialogTitle>
           </DialogHeader>
         )}
-        
-        <div className="mt-4">
-          {renderStep()}
-        </div>
+
+        <div className="mt-4">{renderStep()}</div>
       </DialogContent>
     </Dialog>
   )

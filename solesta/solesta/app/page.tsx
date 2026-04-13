@@ -20,8 +20,8 @@ export default function LandingPage() {
       setIsDesktop(window.innerWidth >= 768)
     }
     checkDesktop()
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
+    window.addEventListener("resize", checkDesktop)
+    return () => window.removeEventListener("resize", checkDesktop)
   }, [])
 
   if (!mounted) {
@@ -67,27 +67,36 @@ export default function LandingPage() {
             priority
             unoptimized
           />
-           <button
-             onClick={() => setIsModalOpen(true)}
-             className="absolute bottom-[5%] left-1/2 h-[12%] w-[80%] -translate-x-1/2 cursor-pointer opacity-0"
-             aria-label="Register"
-           />
-           <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 flex gap-4 px-6 py-4 rounded-full bg-black/40">
-             <button
-               onClick={() => setIsStatusOpen(true)}
-               className="cursor-pointer text-white underline text-sm px-8 whitespace-nowrap"
-               aria-label="Check Status"
-             >
-               Check Status
-             </button>
-             <button
-               onClick={() => setIsContactOpen(true)}
-               className="cursor-pointer text-white underline text-sm px-8 whitespace-nowrap"
-               aria-label="Contact"
-             >
-               Contact
-             </button>
-           </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="absolute bottom-[5%] left-1/2 h-[12%] w-[80%] -translate-x-1/2 cursor-pointer opacity-0"
+            aria-label="Register"
+          />
+          <div className="absolute bottom-[18%] left-1/2 flex -translate-x-1/2 gap-4 rounded-full bg-black/40 px-6 py-4">
+            <button
+              onClick={() => setIsStatusOpen(true)}
+              className="cursor-pointer px-8 text-sm whitespace-nowrap text-white underline"
+              aria-label="Check Status"
+            >
+              Check Status
+            </button>
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSfeM5KvrB3Q7Kkwr78HKP57Qxn9vTBDuelTH9EHEuze6FFw9A/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer px-8 text-sm whitespace-nowrap text-white underline"
+              aria-label="Mr & Mrs Fresher"
+            >
+              Mr & Mrs Fresher
+            </a>
+            <button
+              onClick={() => setIsContactOpen(true)}
+              className="cursor-pointer px-8 text-sm whitespace-nowrap text-white underline"
+              aria-label="Contact"
+            >
+              Contact
+            </button>
+          </div>
         </div>
       )}
 
@@ -101,22 +110,31 @@ export default function LandingPage() {
               >
                 Register <span className="font-bold">Now!</span>
               </button>
-                 <div className="flex gap-4 px-4 py-1 rounded-full bg-black/40">
-                  <Button
-                    variant="link"
-                    onClick={() => setIsStatusOpen(true)}
-                    className="text-white"
+              <div className="flex gap-4 rounded-full bg-black/40 px-4 py-1">
+                <Button
+                  variant="link"
+                  onClick={() => setIsStatusOpen(true)}
+                  className="text-white"
+                >
+                  Check Status
+                </Button>
+                <Button variant="link" asChild className="text-white">
+                  <a
+                    href="https://docs.google.com/forms/d/e/1FAIpQLSfeM5KvrB3Q7Kkwr78HKP57Qxn9vTBDuelTH9EHEuze6FFw9A/viewform"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    Check Status
-                  </Button>
-                  <Button
-                    variant="link"
-                    onClick={() => setIsContactOpen(true)}
-                    className="text-white"
-                  >
-                    Contact
-                  </Button>
-                </div>
+                    Mr & Mrs Fresher
+                  </a>
+                </Button>
+                <Button
+                  variant="link"
+                  onClick={() => setIsContactOpen(true)}
+                  className="text-white"
+                >
+                  Contact
+                </Button>
+              </div>
               <p className="px-4 text-center text-sm text-muted-foreground">
                 by clicking register you agree to our{" "}
                 <a href="#" className="underline hover:text-foreground">

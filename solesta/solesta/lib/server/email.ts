@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer';
-import { config } from './config';
+import nodemailer from "nodemailer"
+import { config } from "./config"
 
 const transporter = nodemailer.createTransport({
   host: config.smtpHost,
@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
     user: config.smtpUser,
     pass: config.smtpPass,
   },
-});
+})
 
 export async function sendOtpEmail(
   email: string,
@@ -17,8 +17,8 @@ export async function sendOtpEmail(
   isKrmu: boolean
 ): Promise<boolean> {
   const subject = isKrmu
-    ? 'Your KRMU Email Verification Code - Solesta 2026'
-    : 'Your Email Verification Code - Solesta 2026';
+    ? "Your KRMU Email Verification Code - Solesta 2026"
+    : "Your Email Verification Code - Solesta 2026"
 
   const html = isKrmu
     ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -44,7 +44,7 @@ export async function sendOtpEmail(
         <p>If you did not request this, please ignore this email.</p>
         <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
         <p style="color: #666; font-size: 12px;">Solesta 2026 - KRMU Annual Fest</p>
-      </div>`;
+      </div>`
 
   try {
     await transporter.sendMail({
@@ -52,11 +52,11 @@ export async function sendOtpEmail(
       to: email,
       subject,
       html,
-    });
-    return true;
+    })
+    return true
   } catch (error) {
-    console.error('Failed to send OTP email:', error);
-    return false;
+    console.error("Failed to send OTP email:", error)
+    return false
   }
 }
 
@@ -73,18 +73,55 @@ export async function sendConfirmationEmail(
     <p>See you at Solesta 2026!</p>
     <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
     <p style="color: #666; font-size: 12px;">Solesta 2026 - KRMU Annual Fest</p>
-  </div>`;
+  </div>`
 
   try {
     await transporter.sendMail({
       from: `"Solesta 2026" <${config.smtpUser}>`,
       to: email,
-      subject: 'Solesta 2026 - Registration Confirmed!',
+      subject: "Solesta 2026 - Registration Confirmed!",
       html,
-    });
-    return true;
+    })
+    return true
   } catch (error) {
-    console.error('Failed to send confirmation email:', error);
-    return false;
+    console.error("Failed to send confirmation email:", error)
+    return false
+  }
+}
+
+export async function sendFresherRegistrationConfirmation(
+  email: string,
+  name: string,
+  rollNumber: string
+): Promise<boolean> {
+  const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>Solesta 2026 - Mr. & Mrs. Fresher Registration Confirmed!</h2>
+    <p>Hello ${name},</p>
+    <p>Congratulations! You have been successfully registered for the <strong>Mr. & Mrs. Fresher Competition</strong>.</p>
+    <div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Registration Details:</strong></p>
+      <p style="margin: 5px 0;">Roll Number: ${rollNumber}</p>
+      <p style="margin: 5px 0;">Event: Mr. & Mrs. Fresher Competition</p>
+    </div>
+    <p>Good luck! We look forward to seeing you at Solesta 2026!</p>
+    <p style="color: #666; font-size: 12px; margin-top: 30px;">For any queries, contact: krmuevents@krmangalam.edu.in</p>
+    <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
+    <p style="color: #666; font-size: 12px;">Solesta 2026 - KRMU Annual Fest</p>
+  </div>`
+
+  try {
+    await transporter.sendMail({
+      from: `"Solesta 2026" <${config.smtpUser}>`,
+      to: email,
+      subject: "Solesta 2026 - Mr. & Mrs. Fresher Registration Confirmed!",
+      html,
+    })
+    return true
+  } catch (error) {
+    console.error(
+      "Failed to send fresher registration confirmation email:",
+      error
+    )
+    return false
   }
 }

@@ -14,6 +14,8 @@ type RegistrationStep =
   | "welcome"
   | "select-institution"
   | "roll-number"
+  | "roll-number-confirm"
+  | "new-student-details"
   | "email"
   | "otp"
   | "details"
@@ -46,6 +48,12 @@ interface RegistrationContextType {
   goBack: () => void
   startRegistration: (institution: "krmu" | "external") => Promise<void>
   submitRollNumber: (rollNumber: string) => Promise<void>
+  submitRollNumberConfirm: (confirmed: boolean) => Promise<void>
+  submitNewStudentDetails: (
+    name: string,
+    course: string,
+    year: string
+  ) => Promise<void>
   submitEmail: (email: string) => Promise<void>
   requestOtp: () => Promise<void>
   verifyOtp: (otp: string) => Promise<void>
@@ -260,7 +268,17 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
         const data = result.data as any
         setEmail(data.email)
 
-        if (data.alreadyVerified) {
+        // Handle new state: ROLL_NUMBER_CONFIRM
+        if (data.state === "ROLL_NUMBER_CONFIRM") {
+          setUserDetails({
+            name: "",
+            email: data.email || "",
+            rollNumber: data.rollNumber || "",
+            course: "",
+            year: "",
+          })
+          advanceStep("roll-number-confirm")
+        } else if (data.alreadyVerified) {
           if (data.state === "FRESHER_SELECTION") {
             advanceStep("fresher")
           } else if (data.state === "DISPLAY_FEE") {
@@ -288,6 +306,70 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
     },
     [externalAppId]
+  )
+
+  const submitRollNumberConfirm = useCallback(
+    async (confirmed: boolean) => {
+      setIsLoading(true)
+      setError(null)
+
+      const result = await api.submitRollNumberConfirm(externalAppId, confirmed)
+      if (result.success && result.data) {
+        const data = result.data as any
+
+        if (confirmed) {
+          // User confirmed - move to new student details form
+          advanceStep("new-student-details")
+        } else {
+          // User wants to re-enter roll number
+          advanceStep("roll-number")
+        }
+      } else {
+        setError(result.message || "Failed to process confirmation")
+      }
+      setIsLoading(false)
+    },
+    [externalAppId]
+  )
+
+  const submitNewStudentDetails = useCallback(
+    async (name: string, course: string, year: string) => {
+      setIsLoading(true)
+      setError(null)
+
+      const result = await api.submitNewStudentDetails(
+        externalAppId,
+        name,
+        course,
+        year
+      )
+      if (result.success && result.data) {
+        const data = result.data as any
+
+        // Update user details
+        setUserDetails({
+          name,
+          email: email || ``,
+          rollNumber: userDetails?.rollNumber || "",
+          course,
+          year,
+        })
+
+        // Handle state transitions
+        if (data.state === "FRESHER_SELECTION") {
+          advanceStep("fresher")
+        } else if (data.state === "DISPLAY_FEE") {
+          setFeeAmount(data.feeAmount || 500)
+          advanceStep("display-fee")
+        } else {
+          setError("Unexpected state after details submission")
+        }
+      } else {
+        setError(result.message || "Failed to create student record")
+      }
+      setIsLoading(false)
+    },
+    [externalAppId, email, userDetails]
   )
 
   const submitEmail = useCallback(
@@ -486,6 +568,8 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
         goBack,
         startRegistration,
         submitRollNumber,
+        submitRollNumberConfirm,
+        submitNewStudentDetails,
         submitEmail,
         requestOtp,
         verifyOtp,

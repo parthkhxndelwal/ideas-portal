@@ -279,6 +279,40 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ externalAppId, referenceId }),
     }),
+
+  submitRollNumberConfirm: (externalAppId: string, confirmed: boolean) =>
+    fetchApi<{ state: string; email?: string }>(
+      `/api/v1/registration?path=roll-number-confirm`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          externalAppId,
+          confirmed,
+          deviceToken: getDeviceToken(),
+        }),
+      }
+    ),
+
+  submitNewStudentDetails: (
+    externalAppId: string,
+    name: string,
+    course: string,
+    year: string
+  ) =>
+    fetchApi<{
+      state: string
+      referenceId?: string
+      paymentLink?: string
+      feeAmount?: number
+    }>(`/api/v1/registration?path=new-student-details`, {
+      method: "POST",
+      body: JSON.stringify({
+        externalAppId,
+        name,
+        course,
+        year,
+      }),
+    }),
 }
 
 export function generateExternalAppId(): string {

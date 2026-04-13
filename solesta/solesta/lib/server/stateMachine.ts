@@ -1,42 +1,46 @@
-import { prisma } from './prisma';
+import { prisma } from "./prisma"
 
 export enum UserState {
-  START = 'START',
-  SELECT_INSTITUTION = 'SELECT_INSTITUTION',
-  ENTER_ROLL_NUMBER = 'ENTER_ROLL_NUMBER',
-  OTP_VERIFICATION = 'OTP_VERIFICATION',
-  MANUAL_DETAILS = 'MANUAL_DETAILS',
-  ENTER_EMAIL = 'ENTER_EMAIL',
-  ENTER_NAME = 'ENTER_NAME',
-  ENTER_COLLEGE = 'ENTER_COLLEGE',
-  ENTER_COLLEGE_ROLL = 'ENTER_COLLEGE_ROLL',
-  SELECT_YEAR = 'SELECT_YEAR',
-  FRESHER_SELECTION = 'FRESHER_SELECTION',
-  DISPLAY_FEE = 'DISPLAY_FEE',
-  REFERENCE_ID = 'REFERENCE_ID',
-  CONFIRM_COPY = 'CONFIRM_COPY',
-  PAYMENT_LINK = 'PAYMENT_LINK',
-  PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED',
-  COMPLETED = 'COMPLETED',
-  SUPPORT_FLOW = 'SUPPORT_FLOW',
+  START = "START",
+  SELECT_INSTITUTION = "SELECT_INSTITUTION",
+  ENTER_ROLL_NUMBER = "ENTER_ROLL_NUMBER",
+  ROLL_NUMBER_CONFIRM = "ROLL_NUMBER_CONFIRM",
+  NEW_STUDENT_DETAILS = "NEW_STUDENT_DETAILS",
+  OTP_VERIFICATION = "OTP_VERIFICATION",
+  MANUAL_DETAILS = "MANUAL_DETAILS",
+  ENTER_EMAIL = "ENTER_EMAIL",
+  ENTER_NAME = "ENTER_NAME",
+  ENTER_COLLEGE = "ENTER_COLLEGE",
+  ENTER_COLLEGE_ROLL = "ENTER_COLLEGE_ROLL",
+  SELECT_YEAR = "SELECT_YEAR",
+  FRESHER_SELECTION = "FRESHER_SELECTION",
+  DISPLAY_FEE = "DISPLAY_FEE",
+  REFERENCE_ID = "REFERENCE_ID",
+  CONFIRM_COPY = "CONFIRM_COPY",
+  PAYMENT_LINK = "PAYMENT_LINK",
+  PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED",
+  COMPLETED = "COMPLETED",
+  SUPPORT_FLOW = "SUPPORT_FLOW",
 }
 
 export interface StateData {
-  institution?: 'krmu' | 'external';
-  rollNumber?: string;
-  email?: string;
-  name?: string;
-  course?: string;
-  year?: string;
-  college?: string;
-  collegeRoll?: string;
-  isFresher?: boolean;
-  feeAmount?: number;
-  referenceId?: string;
-  otpSent?: boolean;
-  replyingToTicket?: string;
-  userTelegramId?: string;
-  userName?: string;
+  institution?: "krmu" | "external"
+  rollNumber?: string
+  email?: string
+  name?: string
+  course?: string
+  year?: string
+  college?: string
+  collegeRoll?: string
+  isFresher?: boolean
+  feeAmount?: number
+  referenceId?: string
+  otpSent?: boolean
+  replyingToTicket?: string
+  userTelegramId?: string
+  userName?: string
+  isNewStudent?: boolean
+  deviceToken?: string
 }
 
 export async function getOrCreateUserByExternalAppId(
@@ -44,7 +48,7 @@ export async function getOrCreateUserByExternalAppId(
 ): Promise<any> {
   let user = await prisma.user.findUnique({
     where: { externalAppId },
-  });
+  })
 
   if (!user) {
     try {
@@ -53,19 +57,19 @@ export async function getOrCreateUserByExternalAppId(
           externalAppId,
           state: UserState.START,
         },
-      });
+      })
     } catch (error: any) {
-      if (error.code === 'P2002') {
+      if (error.code === "P2002") {
         user = await prisma.user.findUnique({
           where: { externalAppId },
-        });
+        })
       } else {
-        throw error;
+        throw error
       }
     }
   }
 
-  return user;
+  return user
 }
 
 export async function getUserByExternalAppId(
@@ -74,7 +78,7 @@ export async function getUserByExternalAppId(
   return prisma.user.findUnique({
     where: { externalAppId },
     include: { registration: true },
-  });
+  })
 }
 
 export async function updateUserState(
@@ -88,7 +92,7 @@ export async function updateUserState(
       state,
       stateData: (stateData as unknown as Record<string, any>) || undefined,
     },
-  });
+  })
 }
 
 export async function updateStateData(
@@ -97,15 +101,15 @@ export async function updateStateData(
 ): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { externalAppId: identifier.externalAppId },
-  });
+  })
 
-  const currentData = (user?.stateData as StateData) || {};
-  const newData = { ...currentData, ...data };
+  const currentData = (user?.stateData as StateData) || {}
+  const newData = { ...currentData, ...data }
 
   await prisma.user.update({
     where: { externalAppId: identifier.externalAppId },
     data: { stateData: newData as unknown as Record<string, any> },
-  });
+  })
 }
 
 export async function isEmailVerifiedRecently(
@@ -115,26 +119,33 @@ export async function isEmailVerifiedRecently(
 ): Promise<{ valid: boolean; message: string; email?: string }> {
   const user = await prisma.user.findUnique({
     where: { externalAppId },
-  });
+  })
 
   if (!user || !user.verifiedAt) {
-    return { valid: false, message: 'Email not verified.' };
+    return { valid: false, message: "Email not verified." }
   }
 
-  const stateData = user.stateData as any;
-  const storedToken = stateData?.deviceToken;
-  const storedEmail = stateData?.email;
-  
+  const stateData = user.stateData as any
+  const storedToken = stateData?.deviceToken
+  const storedEmail = stateData?.email
+
   if (storedToken !== deviceToken) {
-    return { valid: false, message: 'Email verification tied to different device.' };
+    return {
+      valid: false,
+      message: "Email verification tied to different device.",
+    }
   }
 
-  const hoursSinceVerification = (Date.now() - user.verifiedAt.getTime()) / (1000 * 60 * 60);
+  const hoursSinceVerification =
+    (Date.now() - user.verifiedAt.getTime()) / (1000 * 60 * 60)
   if (hoursSinceVerification > hoursValid) {
-    return { valid: false, message: 'Verification expired. Please verify again.' };
+    return {
+      valid: false,
+      message: "Verification expired. Please verify again.",
+    }
   }
 
-  return { valid: true, message: 'Verified.', email: storedEmail };
+  return { valid: true, message: "Verified.", email: storedEmail }
 }
 
 export async function markEmailAsVerified(
@@ -143,21 +154,21 @@ export async function markEmailAsVerified(
 ): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { externalAppId },
-  });
+  })
 
-  const currentData = (user?.stateData as any) || {};
-  
+  const currentData = (user?.stateData as any) || {}
+
   await prisma.user.update({
     where: { externalAppId },
-    data: { 
+    data: {
       isVerified: true,
       verifiedAt: new Date(),
       stateData: {
         ...currentData,
-        deviceToken
-      }
+        deviceToken,
+      },
     },
-  });
+  })
 }
 
 export async function requireEmailVerification(
@@ -167,23 +178,30 @@ export async function requireEmailVerification(
 ): Promise<{ valid: boolean; message: string }> {
   const user = await prisma.user.findUnique({
     where: { externalAppId },
-  });
+  })
 
   if (!user || !user.verifiedAt) {
-    return { valid: false, message: 'Email not verified. Please verify your email first.' };
+    return {
+      valid: false,
+      message: "Email not verified. Please verify your email first.",
+    }
   }
 
-  const stateData = user.stateData as any;
-  const storedToken = stateData?.deviceToken;
-  
+  const stateData = user.stateData as any
+  const storedToken = stateData?.deviceToken
+
   if (storedToken !== deviceToken) {
-    return { valid: false, message: 'Verification tied to different device.' };
+    return { valid: false, message: "Verification tied to different device." }
   }
 
-  const hoursSinceVerification = (Date.now() - user.verifiedAt.getTime()) / (1000 * 60 * 60);
+  const hoursSinceVerification =
+    (Date.now() - user.verifiedAt.getTime()) / (1000 * 60 * 60)
   if (hoursSinceVerification > hoursValid) {
-    return { valid: false, message: 'Email verification expired. Please verify your email again.' };
+    return {
+      valid: false,
+      message: "Email verification expired. Please verify your email again.",
+    }
   }
 
-  return { valid: true, message: 'Email verified.' };
+  return { valid: true, message: "Email verified." }
 }
