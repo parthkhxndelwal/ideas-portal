@@ -64,10 +64,10 @@ export function PaymentStep() {
         <p className="font-mono text-xl font-bold">{referenceId}</p>
       </div>
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <p className="text-sm text-muted-foreground">Ticket Price</p>
-        <p className="text-lg font-bold text-white">₹{feeAmount}</p>
-        <p className="mt-2 text-xs text-muted-foreground">
+      <div className="rounded-lg border-2 border-dashed p-6 text-center">
+        <p className="mb-2 text-sm text-muted-foreground">Ticket Price</p>
+        <p className="text-4xl font-bold">₹{feeAmount}</p>
+        <p className="mt-4 text-xs text-muted-foreground">
           {isKrmu ? "KRMU Student" : "Other University"} • Solesta 2026
         </p>
       </div>
