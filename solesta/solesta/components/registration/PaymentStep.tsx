@@ -49,9 +49,13 @@ export function PaymentStep() {
         <p className="font-mono text-xl font-bold">{referenceId}</p>
       </div>
       
-      <p className="text-lg">
-        Fee Amount: <span className="font-bold">₹{feeAmount}</span>
-      </p>
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+        <p className="text-sm text-muted-foreground">Ticket Price</p>
+        <p className="text-lg font-bold text-blue-700">₹{feeAmount}</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          {isKrmu ? 'KRMU Student' : 'External Student'} • Solesta 2026
+        </p>
+      </div>
       
       {error && <p className="text-sm text-red-500">{error}</p>}
       
@@ -64,28 +68,26 @@ export function PaymentStep() {
         </ol>
       </div>
       
-      {countdown > 0 ? (
-        <Button disabled className="w-full py-6 text-lg">
-          Redirecting in {countdown}...
-        </Button>
-      ) : showConfirm ? (
-        <Button
-          onClick={handleConfirm}
-          disabled={isLoading}
-          className="w-full py-6 text-lg"
-        >
-          {isLoading ? 'Confirming...' : "I've Paid"}
-        </Button>
-      ) : (
-        <Button
-          onClick={handleOpenPayment}
-          className="w-full py-6 text-lg"
-        >
-          Open Payment Link
-        </Button>
-      )}
+       <div className="space-y-3">
+         <Button
+           onClick={handleOpenPayment}
+           disabled={countdown > 0}
+           className="w-full py-6 text-lg"
+         >
+           {countdown > 0 ? `Redirecting in ${countdown}...` : 'Continue to Payment'}
+         </Button>
+         
+         <Button
+           onClick={handleConfirm}
+           disabled={isLoading}
+           variant="outline"
+           className="w-full py-6 text-lg"
+         >
+           {isLoading ? 'Confirming...' : "I've Paid"}
+         </Button>
+       </div>
       
-      {(!showConfirm || isLoading) && goBack && (
+      {goBack && (
         <Button variant="ghost" onClick={goBack} className="w-full">
           Back
         </Button>

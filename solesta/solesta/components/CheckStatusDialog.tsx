@@ -144,32 +144,32 @@ export function CheckStatusDialog({ open, onOpenChange }: CheckStatusDialogProps
                 </div>
               </div>
               
-               <div className="rounded-lg border p-3">
-                 <p className="text-xs text-muted-foreground">Payment Status</p>
-                 <p className={`font-semibold text-lg ${status.registration.feePaid ? 'text-green-600' : 'text-yellow-600'}`}>
-                   {status.registration.feePaid ? '✅ Paid' : '⏳ Pending'}
-                 </p>
-                 {status.registration.feePaid ? (
-                   <p className="text-sm text-muted-foreground">Amount: ₹{status.registration.feeAmount}</p>
-                 ) : (
-                   <>
-                     <p className="text-sm text-muted-foreground mt-1">
-                       If payment is made, please wait 1-2 days for verification
-                     </p>
-                       <Button 
-                         onClick={handleMakePayment}
-                         disabled={paymentCountdown !== null || showCopied}
-                         className="w-full mt-3"
-                       >
-                         {showCopied
-                           ? '✅ Ref ID copied to clipboard'
-                           : paymentCountdown !== null
-                           ? `Redirecting in ${paymentCountdown}...`
-                           : 'Make Payment'}
-                       </Button>
-                   </>
-                 )}
-               </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Payment Status</p>
+                  <p className={`font-semibold text-lg ${status.registration.feePaid ? 'text-green-600' : 'text-amber-600'}`}>
+                    {status.registration.feePaid ? '✅ Paid' : '🔄 Under Review'}
+                  </p>
+                  {status.registration.feePaid ? (
+                    <p className="text-sm text-muted-foreground">Amount: ₹{status.registration.feeAmount}</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your payment is being verified. Please wait 1-2 days.
+                      </p>
+                        <Button 
+                          onClick={handleMakePayment}
+                          disabled={paymentCountdown !== null || showCopied}
+                          className="w-full mt-3"
+                        >
+                          {showCopied
+                            ? '✅ Ref ID copied to clipboard'
+                            : paymentCountdown !== null
+                            ? `Redirecting in ${paymentCountdown}...`
+                            : 'Make Payment'}
+                        </Button>
+                    </>
+                  )}
+                </div>
               
                {status.registration.isFresher !== undefined && status.registration.year === '2025' && (
                  <div className="rounded-lg border p-3">

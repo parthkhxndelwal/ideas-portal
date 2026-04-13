@@ -1,14 +1,35 @@
 "use client"
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { useRegistration } from '@/hooks/useRegistration'
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { useRegistration } from "@/hooks/useRegistration"
+import { api } from "@/lib/api"
 
 export function InstitutionSelector() {
   const { startRegistration, isLoading, error } = useRegistration()
-  const [selected, setSelected] = useState<'krmu' | 'external' | null>(null)
+  const [selected, setSelected] = useState<"krmu" | "external" | null>(null)
+  const [enableExternalRegistration, setEnableExternalRegistration] =
+    useState(true)
+  const [loadingConfig, setLoadingConfig] = useState(true)
 
-  const handleClick = async (institution: 'krmu' | 'external') => {
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const result = await api.getConfig()
+        if (result.success && result.data) {
+          setEnableExternalRegistration(result.data.enableExternalRegistration)
+        }
+      } catch (err) {
+        console.error("Failed to fetch config:", err)
+      } finally {
+        setLoadingConfig(false)
+      }
+    }
+
+    fetchConfig()
+  }, [])
+
+  const handleClick = async (institution: "krmu" | "external") => {
     setSelected(institution)
     await startRegistration(institution)
   }
@@ -17,24 +38,28 @@ export function InstitutionSelector() {
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Select Your Institution</h2>
       {error && <p className="text-sm text-red-500">{error}</p>}
-      
+
       <div className="grid gap-3">
         <Button
-          onClick={() => handleClick('krmu')}
-          disabled={isLoading}
+          onClick={() => handleClick("krmu")}
+          disabled={isLoading || loadingConfig}
           className="w-full py-6 text-lg"
         >
-          {selected === 'krmu' && isLoading ? 'Loading...' : 'KRMU Student'}
+          {selected === "krmu" && isLoading ? "Loading..." : "KRMU Student"}
         </Button>
-        
-        <Button
-          onClick={() => handleClick('external')}
-          disabled={isLoading}
-          variant="outline"
-          className="w-full py-6 text-lg"
-        >
-          {selected === 'external' && isLoading ? 'Loading...' : 'External Student'}
-        </Button>
+
+        {enableExternalRegistration && (
+          <Button
+            onClick={() => handleClick("external")}
+            disabled={isLoading || loadingConfig}
+            variant="outline"
+            className="w-full py-6 text-lg"
+          >
+            {selected === "external" && isLoading
+              ? "Loading..."
+              : "External Student"}
+          </Button>
+        )}
       </div>
     </div>
   )
