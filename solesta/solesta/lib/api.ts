@@ -313,6 +313,18 @@ export const api = {
         year,
       }),
     }),
+
+  requestOtpForTicket: (email: string) =>
+    fetchApi<{ otpSent: boolean }>(`/api/v1/ticket-otp?path=request`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyOtpForTicket: (email: string, otp: string) =>
+    fetchApi<{ verified: boolean }>(`/api/v1/ticket-otp?path=verify`, {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
 }
 
 export function generateExternalAppId(): string {

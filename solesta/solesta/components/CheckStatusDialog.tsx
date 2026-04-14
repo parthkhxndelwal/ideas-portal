@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,8 +25,15 @@ export function CheckStatusDialog({
   const [showTicket, setShowTicket] = useState(false)
   const [ticket, setTicket] = useState<any>(null)
   const [paymentCountdown, setPaymentCountdown] = useState<number | null>(null)
-
   const [showCopied, setShowCopied] = useState(false)
+
+  // OTP states
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otp, setOtp] = useState(["", "", "", "", "", ""])
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpError, setOtpError] = useState("")
+  const [otpCountdown, setOtpCountdown] = useState(0)
+  const [otpMessage, setOtpMessage] = useState("")
 
   const handleSearch = async () => {
     if (!inputId) return
@@ -47,13 +54,144 @@ export function CheckStatusDialog({
   }
 
   const handleViewTicket = async () => {
+    // Trigger OTP request first
+    setOtpError("")
+    setOtpMessage("")
     setLoading(true)
-    const result = await api.getTicket(inputId)
-    if (result.success && result.data) {
-      setTicket(result.data)
-      setShowTicket(true)
+
+    try {
+      const result = await api.requestOtpForTicket(status.registration.email)
+      if (result.success) {
+        setOtpMessage(
+          result.message || `OTP sent to ${status.registration.email}`
+        )
+        setShowOtpModal(true)
+        setOtp(["", "", "", "", "", ""])
+        // Start cooldown
+        setOtpCountdown(60)
+      } else {
+        setOtpError(result.message || "Failed to send OTP")
+      }
+    } catch (error) {
+      console.error("OTP request error:", error)
+      setOtpError("Failed to send OTP. Please try again.")
     }
     setLoading(false)
+  }
+
+  const handleOtpChange = (index: number, value: string) => {
+    // Only allow digits
+    if (value && !/^\d$/.test(value)) return
+
+    const newOtp = [...otp]
+    newOtp[index] = value
+
+    setOtp(newOtp)
+
+    // Auto-focus next field
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`)
+      nextInput?.focus()
+    }
+  }
+
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`)
+      prevInput?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData.getData("text")
+    const digits = pastedData.replace(/\D/g, "").slice(0, 6)
+
+    const newOtp = digits.split("")
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = newOtp[i] || ""
+    }
+    setOtp(newOtp as [string, string, string, string, string, string])
+
+    // Focus last filled field or next empty field
+    const lastFilledIndex = Math.min(digits.length - 1, 5)
+    if (lastFilledIndex < 5) {
+      setTimeout(() => {
+        document.getElementById(`otp-${lastFilledIndex + 1}`)?.focus()
+      }, 0)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join("")
+    if (otpCode.length !== 6) {
+      setOtpError("Please enter a 6-digit OTP")
+      return
+    }
+
+    setOtpLoading(true)
+    setOtpError("")
+
+    try {
+      const result = await api.verifyOtpForTicket(
+        status.registration.email,
+        otpCode
+      )
+      if (result.success) {
+        // OTP verified, now fetch and show ticket
+        setShowOtpModal(false)
+        setLoading(true)
+        const ticketResult = await api.getTicket(inputId)
+        if (ticketResult.success && ticketResult.data) {
+          setTicket(ticketResult.data)
+          setShowTicket(true)
+        } else {
+          setOtpError(ticketResult.message || "Failed to load ticket")
+          setShowOtpModal(true)
+        }
+        setLoading(false)
+      } else {
+        setOtpError(result.message || "Invalid OTP")
+      }
+    } catch (error) {
+      console.error("OTP verification error:", error)
+      setOtpError("Failed to verify OTP. Please try again.")
+    }
+    setOtpLoading(false)
+  }
+
+  const handleResendOtp = async () => {
+    setOtpLoading(true)
+    setOtpError("")
+
+    try {
+      const result = await api.requestOtpForTicket(status.registration.email)
+      if (result.success) {
+        setOtpMessage(result.message || "OTP resent successfully")
+        setOtp(["", "", "", "", "", ""])
+        setOtpCountdown(60)
+      } else {
+        setOtpError(result.message || "Failed to resend OTP")
+      }
+    } catch (error) {
+      console.error("Resend OTP error:", error)
+      setOtpError("Failed to resend OTP")
+    }
+    setOtpLoading(false)
+  }
+
+  const handleDownloadQr = () => {
+    if (!ticket?.qrCode) return
+
+    const link = document.createElement("a")
+    link.href = ticket.qrCode
+    link.download = `solesta-qr-${ticket.referenceId}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleResendTicket = async () => {
@@ -94,6 +232,17 @@ export function CheckStatusDialog({
       }, 1000)
     }, 1000)
   }
+
+  // OTP countdown effect
+  useEffect(() => {
+    if (otpCountdown <= 0) return
+
+    const interval = setInterval(() => {
+      setOtpCountdown((prev) => Math.max(0, prev - 1))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [otpCountdown])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,12 +348,13 @@ export function CheckStatusDialog({
                   </div>
                 )}
 
-              {status.registration.hasQrCode && (
+              {status.registration.hasQrCode && status.registration.feePaid && (
                 <Button
                   onClick={handleViewTicket}
                   className="w-full py-6 text-lg"
+                  disabled={loading}
                 >
-                  🎫 View Ticket
+                  {loading ? "Loading..." : "🎫 View Ticket"}
                 </Button>
               )}
 
@@ -241,6 +391,75 @@ export function CheckStatusDialog({
           )}
         </div>
 
+        {/* OTP Verification Modal */}
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="mx-4 max-w-sm rounded-lg bg-white p-6">
+              <h3 className="mb-2 text-xl font-bold">Verify Your Email</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {otpMessage ||
+                  `Enter the OTP sent to ${status.registration.email}`}
+              </p>
+
+              {otpError && (
+                <div className="mb-4 rounded-lg bg-red-50 p-3">
+                  <p className="text-sm text-red-700">{otpError}</p>
+                </div>
+              )}
+
+              <div className="mb-4 flex justify-center gap-2">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    id={`otp-${index}`}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    onPaste={handleOtpPaste}
+                    className="h-12 w-12 rounded-lg border-2 border-input text-center text-lg font-bold focus:border-primary focus:outline-none"
+                  />
+                ))}
+              </div>
+
+              <div className="mb-4 flex gap-2">
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={otpLoading || otp.join("").length !== 6}
+                  className="flex-1"
+                >
+                  {otpLoading ? "Verifying..." : "Verify"}
+                </Button>
+                <Button
+                  onClick={() => setShowOtpModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              {otpCountdown > 0 ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  Resend OTP in {otpCountdown}s
+                </p>
+              ) : (
+                <Button
+                  onClick={handleResendOtp}
+                  variant="ghost"
+                  className="w-full text-sm"
+                  disabled={otpLoading}
+                >
+                  Resend OTP
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Ticket Display Modal */}
         {showTicket && ticket && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="mx-4 max-w-sm rounded-lg bg-white p-6 text-center">
@@ -250,16 +469,25 @@ export function CheckStatusDialog({
               </div>
               <p className="mb-1 text-lg font-bold">{ticket.name}</p>
               <p className="mb-4 font-mono text-sm">{ticket.referenceId}</p>
-              <Button
-                onClick={handleResendTicket}
-                variant="outline"
-                className="mb-2 w-full"
-              >
-                📧 Resend to Email
-              </Button>
-              <Button onClick={() => setShowTicket(false)} className="w-full">
-                Close
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={handleDownloadQr} className="w-full">
+                  ⬇️ Download QR
+                </Button>
+                <Button
+                  onClick={handleResendTicket}
+                  variant="outline"
+                  className="w-full"
+                >
+                  📧 Resend to Email
+                </Button>
+                <Button
+                  onClick={() => setShowTicket(false)}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         )}
