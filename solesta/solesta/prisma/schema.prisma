@@ -85,6 +85,9 @@ model Registration {
   lastTelegramAttempt DateTime?    @map("last_telegram_attempt")
   lastEmailAttempt   DateTime?    @map("last_email_attempt")
   
+  ticketSentAt        DateTime?     @map("ticket_sent_at")
+  manualRegistration  Boolean       @default(false) @map("manual_registration")
+  
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -134,4 +137,28 @@ model ApiKey {
   lastUsedAt  DateTime?
 
   @@map("api_keys")
+}
+
+model Admin {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  username  String    @unique
+  password  String    // bcrypt hashed
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+model RegistrationLink {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  registrationId  String    @map("registration_id") @db.ObjectId
+  token           String    @unique
+  expiresAt       DateTime  @map("expires_at")
+  isUsed          Boolean   @default(false) @map("is_used")
+  usedAt          DateTime? @map("used_at")
+  email           String
+  createdAt       DateTime  @default(now())
+
+  @@map("registration_links")
 }

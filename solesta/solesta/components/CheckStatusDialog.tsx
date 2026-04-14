@@ -24,7 +24,6 @@ export function CheckStatusDialog({
   const [loading, setLoading] = useState(false)
   const [showTicket, setShowTicket] = useState(false)
   const [ticket, setTicket] = useState<any>(null)
-  const [paymentCountdown, setPaymentCountdown] = useState<number | null>(null)
   const [showCopied, setShowCopied] = useState(false)
 
   // OTP states
@@ -204,33 +203,22 @@ export function CheckStatusDialog({
   const handleMakePayment = async () => {
     // Copy reference ID to clipboard
     const referenceId = status.registration.referenceId
-    await navigator.clipboard.writeText(referenceId)
+    try {
+      await navigator.clipboard.writeText(referenceId)
+      setShowCopied(true)
+      setTimeout(() => setShowCopied(false), 2000)
+    } catch (e) {
+      console.error("Failed to copy:", e)
+    }
 
-    // Show "Copied" message for 1 second
-    setShowCopied(true)
-    setTimeout(() => setShowCopied(false), 1000)
+    // Get payment link based on institution
+    const paymentLink = status.registration.isKrmu
+      ? "https://p.ppsl.io/PYTMPS/Ro1Qfk"
+      : "https://p.ppsl.io/PYTMPS/UYrQfk"
 
-    // Start countdown after 1 second delay
-    setTimeout(() => {
-      setPaymentCountdown(3)
-
-      // Countdown timer
-      const interval = setInterval(() => {
-        setPaymentCountdown((prev) => {
-          if (prev === null || prev <= 1) {
-            clearInterval(interval)
-            // Get payment link based on institution
-            const paymentLink = status.registration.isKrmu
-              ? "https://p.ppsl.io/PYTMPS/Ro1Qfk"
-              : "https://p.ppsl.io/PYTMPS/UYrQfk"
-            window.open(paymentLink, "_blank")
-            setPaymentCountdown(null)
-            return null
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }, 1000)
+    // iOS-compatible redirect: use location.href directly
+    // This is more reliable than window.open on iOS Safari
+    window.location.href = paymentLink
   }
 
   // OTP countdown effect
@@ -318,14 +306,12 @@ export function CheckStatusDialog({
                     </p>
                     <Button
                       onClick={handleMakePayment}
-                      disabled={paymentCountdown !== null || showCopied}
+                      disabled={showCopied}
                       className="mt-3 w-full"
                     >
                       {showCopied
-                        ? "✅ Ref ID copied to clipboard"
-                        : paymentCountdown !== null
-                          ? `Redirecting in ${paymentCountdown}...`
-                          : "Make Payment"}
+                        ? "✅ Ref ID copied - Opening Payment..."
+                        : "Make Payment"}
                     </Button>
                     <p className="mt-2 text-xs text-yellow-600">
                       (Avoid if you have already paid)
@@ -363,7 +349,6 @@ export function CheckStatusDialog({
                 onClick={() => {
                   setStatus(null)
                   setInputId("")
-                  setPaymentCountdown(null)
                 }}
                 className="w-full"
               >

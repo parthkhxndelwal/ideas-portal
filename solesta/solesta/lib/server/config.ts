@@ -10,6 +10,7 @@ export interface Config {
   smtpUser: string
   smtpPass: string
   appUrl: string
+  ticketAppUrl: string
   paymentLinkInternal: string
   paymentLinkExternal: string
   feeKrmu: number
@@ -36,6 +37,8 @@ export const config: Config = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   appUrl: process.env.APP_URL || "",
+  ticketAppUrl:
+    process.env.TICKET_APP_URL || "https://solesta.krmangalam.edu.in",
   paymentLinkInternal:
     process.env.PAYMENT_LINK_INTERNAL || "https://p.ppsl.io/PYTMPS/Ro1Qfk",
   paymentLinkExternal:
