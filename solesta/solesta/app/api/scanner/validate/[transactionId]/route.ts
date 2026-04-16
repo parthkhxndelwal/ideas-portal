@@ -49,7 +49,10 @@ export async function GET(
 
       if (!registration) {
         return NextResponse.json(
-          { error: "Registration not found", found: false },
+          { 
+            success: false,
+            error: "Registration not found" 
+          },
           { status: 404 }
         )
       }
@@ -58,33 +61,32 @@ export async function GET(
       if (!registration.feePaid) {
         return NextResponse.json(
           {
+            success: false,
             error: "Registration fee not paid",
-            found: true,
-            eligible: false,
           },
           { status: 403 }
         )
       }
 
       // Return registration details for validation
+      const mobileUser = {
+        id: registration.id,
+        transactionId: registration.referenceId,
+        name: registration.name,
+        email: registration.email,
+        rollNumber: registration.rollNumber,
+        courseAndSemester: `${registration.course} - Year ${registration.year}`,
+        year: registration.year,
+        isKrmu: registration.isKrmu,
+        isFresher: registration.isFresher,
+        scanned: registration.scanned,
+        scannedAt: registration.scannedAt?.toISOString(),
+        scannedBy: registration.scannedBy,
+      };
+
       return NextResponse.json({
         success: true,
-        found: true,
-        eligible: true,
-        registration: {
-          id: registration.id,
-          transactionId: registration.referenceId,
-          name: registration.name,
-          email: registration.email,
-          rollNumber: registration.rollNumber,
-          courseAndSemester: `${registration.course} - Year ${registration.year}`,
-          year: registration.year,
-          isKrmu: registration.isKrmu,
-          isFresher: registration.isFresher,
-          scanned: registration.scanned,
-          scannedAt: registration.scannedAt?.toISOString(),
-          scannedBy: registration.scannedBy,
-        },
+        data: mobileUser,
       })
     } catch (error) {
       console.error("Validation error:", error)
