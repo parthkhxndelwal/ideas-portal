@@ -61,6 +61,8 @@ interface FormData {
   email: string
   course: string
   year: string
+  college: string
+  studentType: "krmu" | "external"
 }
 
 export function RegistrationsTab() {
@@ -89,6 +91,8 @@ export function RegistrationsTab() {
     email: "",
     course: "",
     year: "",
+    college: "",
+    studentType: "krmu",
   })
 
   const handleSearchChange = (value: string) => {
@@ -202,9 +206,16 @@ export function RegistrationsTab() {
   }
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.email || !formData.rollNumber) {
-      alert("Please fill in all required fields (Roll Number, Name, Email)")
-      return
+    if (formData.studentType === "krmu") {
+      if (!formData.name || !formData.email || !formData.rollNumber) {
+        alert("Please fill in all required fields (Roll Number, Name, Email)")
+        return
+      }
+    } else {
+      if (!formData.name || !formData.email || !formData.college) {
+        alert("Please fill in all required fields (Name, Email, College)")
+        return
+      }
     }
 
     try {
@@ -215,10 +226,11 @@ export function RegistrationsTab() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          rollNumber: formData.rollNumber,
+          rollNumber: formData.studentType === "krmu" ? formData.rollNumber : undefined,
+          college: formData.studentType === "external" ? formData.college : undefined,
           course: formData.course,
           year: formData.year,
-          isKrmu: true,
+          isKrmu: formData.studentType === "krmu",
           paymentMode: "verified", // Mark as paid immediately
         }),
       })
@@ -238,6 +250,8 @@ export function RegistrationsTab() {
           email: "",
           course: "",
           year: "",
+          college: "",
+          studentType: "krmu",
         })
         setShowCreateDialog(false)
         fetchRegistrations()
@@ -411,26 +425,74 @@ export function RegistrationsTab() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Roll Number *
-                  </label>
-                  <div className="relative">
-                    <Input
-                      placeholder="e.g., 2301350013"
-                      value={formData.rollNumber}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setFormData({ ...formData, rollNumber: e.target.value })
-                      }}
-                      onBlur={() => handleLookupStudent(formData.rollNumber)}
-                      className="h-10 border-neutral-300 bg-white text-slate-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                    />
-                    {lookupLoading && (
-                      <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-neutral-500 dark:text-neutral-400" />
-                    )}
-                  </div>
+              {/* Student Type Selector */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  Student Type *
+                </label>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() =>
+                      setFormData({ ...formData, studentType: "krmu" })
+                    }
+                    variant={
+                      formData.studentType === "krmu" ? "default" : "outline"
+                    }
+                    className={`flex-1 ${
+                      formData.studentType === "krmu"
+                        ? "bg-neutral-800 text-neutral-100 dark:bg-neutral-200 dark:text-neutral-900"
+                        : ""
+                    }`}
+                  >
+                    KRMU Student
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      setFormData({ ...formData, studentType: "external" })
+                    }
+                    variant={
+                      formData.studentType === "external" ? "default" : "outline"
+                    }
+                    className={`flex-1 ${
+                      formData.studentType === "external"
+                        ? "bg-neutral-800 text-neutral-100 dark:bg-neutral-200 dark:text-neutral-900"
+                        : ""
+                    }`}
+                  >
+                    External Student
+                  </Button>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Roll Number - Only for KRMU */}
+                {formData.studentType === "krmu" && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                      Roll Number *
+                    </label>
+                    <div className="relative">
+                      <Input
+                        placeholder="e.g., 2301350013"
+                        value={formData.rollNumber}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          setFormData({
+                            ...formData,
+                            rollNumber: e.target.value,
+                          })
+                        }}
+                        onBlur={() =>
+                          handleLookupStudent(formData.rollNumber)
+                        }
+                        className="h-10 border-neutral-300 bg-white text-slate-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      />
+                      {lookupLoading && (
+                        <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-neutral-500 dark:text-neutral-400" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     Name *
@@ -453,29 +515,51 @@ export function RegistrationsTab() {
                 <div className="relative">
                   <Input
                     type="email"
-                    placeholder="student@krmu.edu.in"
+                    placeholder={
+                      formData.studentType === "krmu"
+                        ? "student@krmu.edu.in"
+                        : "student@university.edu"
+                    }
                     value={formData.email}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
                     className="h-10 border-neutral-300 bg-white pr-24 text-slate-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                   />
-                  {isValidRollNumber && (
-                    <Button
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          email: `${formData.rollNumber}@krmu.edu.in`,
-                        })
-                      }}
-                      size="sm"
-                      className="absolute top-1 right-1 h-8 bg-neutral-700 text-xs font-medium text-neutral-100 transition-transform hover:bg-neutral-800 active:scale-98 dark:bg-neutral-300 dark:text-neutral-900 dark:hover:bg-neutral-200"
-                    >
-                      College Email
-                    </Button>
-                  )}
+                  {formData.studentType === "krmu" &&
+                    isValidRollNumber && (
+                      <Button
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            email: `${formData.rollNumber}@krmu.edu.in`,
+                          })
+                        }}
+                        size="sm"
+                        className="absolute top-1 right-1 h-8 bg-neutral-700 text-xs font-medium text-neutral-100 transition-transform hover:bg-neutral-800 active:scale-98 dark:bg-neutral-300 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                      >
+                        College Email
+                      </Button>
+                    )}
                 </div>
               </div>
+
+              {/* College - Only for External */}
+              {formData.studentType === "external" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    College/University *
+                  </label>
+                  <Input
+                    placeholder="e.g., Delhi University"
+                    value={formData.college}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, college: e.target.value })
+                    }
+                    className="h-10 border-neutral-300 bg-white text-slate-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -508,7 +592,8 @@ export function RegistrationsTab() {
 
               <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
                 Registration will be marked as PAID immediately upon creation.
-                Fee: ₹500 (KRMU Student)
+                Fee: ₹
+                {formData.studentType === "krmu" ? "500 (KRMU Student)" : "700 (External Student)"}
               </p>
 
               <Button
@@ -517,7 +602,9 @@ export function RegistrationsTab() {
                   creating ||
                   !formData.name ||
                   !isValidEmail ||
-                  !formData.rollNumber
+                  (formData.studentType === "krmu"
+                    ? !formData.rollNumber
+                    : !formData.college)
                 }
                 className="w-full bg-neutral-800 text-neutral-100 hover:bg-neutral-700 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
               >

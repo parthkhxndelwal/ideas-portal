@@ -63,7 +63,7 @@ export default function ScannerScreen() {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === 'granted');
 
-      await loadCachedData();
+      // NO LONGER load cached data - we validate directly from server
       await loadScanHistory();
       await syncPendingScans();
     } catch {
@@ -73,55 +73,19 @@ export default function ScannerScreen() {
     }
   };
 
-  const loadCachedData = async () => {
-    const cache = await StorageService.getUserCache();
-    if (cache) {
-      setUsers(cache.users);
-      setLastSync(cache.lastUpdated);
-    } else {
-      // No cache, try to download with fallback
-      await downloadDataWithFallback();
-    }
-  };
-
   const loadScanHistory = async () => {
     const history = await StorageService.getScanHistory();
     setScanHistory(history);
   };
 
+  // Note: Download functions kept for potential future offline mode
+  // Currently disabled - all validation is done server-side
   const downloadData = async () => {
-    setSyncing(true);
-    try {
-      const result = await SyncService.downloadAndCacheData();
-      if (result.success) {
-        await loadCachedData();
-        Alert.alert('Success', result.message);
-      } else {
-        Alert.alert('Error', result.message);
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to download data');
-    } finally {
-      setSyncing(false);
-    }
+    Alert.alert('Info', 'Registrations are validated directly from server. No local cache needed.');
   };
 
   const downloadDataWithFallback = async () => {
-    setSyncing(true);
-    try {
-      const result = await SyncService.downloadWithFallback();
-      if (result.success) {
-        await loadCachedData();
-        const serverName = result.serverUsed === 'ALPHA' ? 'Alpha' : 'Beta';
-        Alert.alert('Success', `${result.message} (${serverName} server)`);
-      } else {
-        Alert.alert('Internet Error', result.message + '\n\nYou can continue in offline mode with cached data.');
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to download data');
-    } finally {
-      setSyncing(false);
-    }
+    Alert.alert('Info', 'Registrations are validated directly from server. No local cache needed.');
   };
 
   const syncPendingScans = async () => {
@@ -162,7 +126,8 @@ export default function ScannerScreen() {
         return;
       }
 
-      const validation = QRService.validateQRData(qrData, users);
+      // Validate registration directly with server (no cache)
+      const validation = await QRService.validateQRDataWithServer(qrData);
       if (!validation.isValid) {
         Alert.alert('Invalid Entry', validation.error || 'QR code validation failed');
         return;

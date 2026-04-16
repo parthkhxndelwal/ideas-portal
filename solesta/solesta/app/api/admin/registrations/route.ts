@@ -95,21 +95,51 @@ export async function POST(request: NextRequest) {
       paymentMode,
     } = body
 
-    if (!name || !email || !rollNumber) {
+    if (!name || !email) {
       return NextResponse.json(
-        { error: "Name, email, and roll number are required" },
+        { error: "Name and email are required" },
         { status: 400 }
       )
     }
 
-    // Check if registration already exists for this roll number
-    const existing = await prisma.registration.findFirst({
-      where: { rollNumber },
+    // For KRMU students, roll number is required
+    if (isKrmu && !rollNumber) {
+      return NextResponse.json(
+        { error: "Roll number is required for KRMU students" },
+        { status: 400 }
+      )
+    }
+
+    // For external students, college is required
+    if (!isKrmu && !college) {
+      return NextResponse.json(
+        { error: "College is required for external students" },
+        { status: 400 }
+      )
+    }
+
+    // Check if registration already exists
+    if (isKrmu && rollNumber) {
+      const existingByRollNumber = await prisma.registration.findFirst({
+        where: { rollNumber },
+      })
+
+      if (existingByRollNumber) {
+        return NextResponse.json(
+          { error: "Registration already exists for this roll number" },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Check if registration already exists for this email
+    const existingByEmail = await prisma.registration.findFirst({
+      where: { email },
     })
 
-    if (existing) {
+    if (existingByEmail) {
       return NextResponse.json(
-        { error: "Registration already exists for this roll number" },
+        { error: "Registration already exists for this email" },
         { status: 409 }
       )
     }
@@ -145,13 +175,13 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         name,
         email,
-        rollNumber,
+        rollNumber: rollNumber || null,
         college: college || "",
         course: course || "",
         year: year || "",
         isKrmu,
         isFresher: false,
-        feeAmount: 500,
+        feeAmount: isKrmu ? 500 : 700,
         feePaid: paymentMode === "verified",
         paymentDate: paymentMode === "verified" ? new Date() : null,
       },

@@ -222,6 +222,14 @@ export class ApiService {
     return this.makeRequest<UsersApiResponse>('/api/scanner/users');
   }
 
+  static async validateRegistration(
+    transactionId: string
+  ): Promise<ApiResponse<MobileUser>> {
+    return this.makeRequest<MobileUser>(
+      `/api/scanner/validate/${encodeURIComponent(transactionId)}`
+    );
+  }
+
   static async recordEntry(
     scanData: {
       transactionId: string;
@@ -409,6 +417,7 @@ export class QRService {
     }
   }
 
+  // Legacy method - kept for backwards compatibility but not used
   static validateQRData(qrData: QRData, users: MobileUser[]): { isValid: boolean; user?: MobileUser; error?: string } {
     const user = users.find(u => u.transactionId === qrData.transactionId);
 
@@ -423,6 +432,38 @@ export class QRService {
       isValid: true,
       user,
     };
+  }
+
+  // New method - validates registration directly from server
+  static async validateQRDataWithServer(qrData: QRData): Promise<{ isValid: boolean; user?: MobileUser; error?: string }> {
+    try {
+      const response = await ApiService.validateRegistration(qrData.transactionId);
+
+      if (!response.success) {
+        return {
+          isValid: false,
+          error: response.error || 'Failed to validate registration',
+        };
+      }
+
+      const user = response.data;
+      if (!user) {
+        return {
+          isValid: false,
+          error: 'Invalid registration data received from server',
+        };
+      }
+
+      return {
+        isValid: true,
+        user,
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Failed to validate registration',
+      };
+    }
   }
 }
 
