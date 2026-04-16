@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { RegistrationsTab } from "./components/RegistrationsTab"
+import { ScannerApiKeysTab } from "./components/ScannerApiKeysTab"
 import { LogOut, Sun, Moon } from "lucide-react"
 import { useTheme } from "@/app/admin/context/ThemeContext"
 
@@ -14,6 +15,9 @@ export default function DashboardPage() {
     null
   )
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<"registrations" | "scanner">(
+    "registrations"
+  )
 
   useEffect(() => {
     checkAuth()
@@ -105,11 +109,38 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 pb-8">
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900">
-          <h2 className="mb-6 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            Registration Management
-          </h2>
-          <RegistrationsTab />
+        <div className="rounded-xl border border-neutral-200 bg-white shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+          {/* Tabs */}
+          <div className="border-b border-neutral-200 dark:border-neutral-800">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab("registrations")}
+                className={`flex-1 px-6 py-4 font-medium text-sm transition-colors ${
+                  activeTab === "registrations"
+                    ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                }`}
+              >
+                Registration Management
+              </button>
+              <button
+                onClick={() => setActiveTab("scanner")}
+                className={`flex-1 px-6 py-4 font-medium text-sm transition-colors ${
+                  activeTab === "scanner"
+                    ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                }`}
+              >
+                Scanner API Keys
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === "registrations" && <RegistrationsTab />}
+            {activeTab === "scanner" && <ScannerApiKeysTab />}
+          </div>
         </div>
       </main>
     </div>

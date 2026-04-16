@@ -5,8 +5,7 @@ import { ApiResponse, User, MobileUser, LocalScanRecord, DeviceConfig, CachedDat
 
 // Configuration
 export const API_SERVERS = {
-  ALPHA: 'https://ideas.parth.engineer',
-  BETA: 'https://icloudems.tech',
+  SOLESTA: 'https://solesta.krmangalam.edu.in',
 } as const;
 
 export type ServerType = keyof typeof API_SERVERS;
@@ -25,9 +24,9 @@ export class ServerConfigService {
   static async getSelectedServer(): Promise<ServerType> {
     try {
       const server = await AsyncStorage.getItem(STORAGE_KEYS.API_SERVER);
-      return (server as ServerType) || 'ALPHA';
+      return (server as ServerType) || 'SOLESTA';
     } catch {
-      return 'ALPHA';
+      return 'SOLESTA';
     }
   }
 
@@ -133,31 +132,34 @@ export class DeviceService {
     device?: any; 
     serverUsed?: ServerType;
   }> {
-    // Try current server first
+    // Try current server first (should be SOLESTA)
     let result = await this.registerDevice(deviceId, deviceName);
     if (result.success) {
       const currentServer = await ServerConfigService.getSelectedServer();
       return { ...result, serverUsed: currentServer };
     }
 
-    // Current server failed, try the other one
+    // Current server failed, try other servers as fallback (dynamic based on API_SERVERS)
     const currentServer = await ServerConfigService.getSelectedServer();
-    const fallbackServer: ServerType = currentServer === 'ALPHA' ? 'BETA' : 'ALPHA';
+    const allServers: ServerType[] = Object.keys(API_SERVERS) as ServerType[];
+    const fallbackServers = allServers.filter(s => s !== currentServer);
     
-    // Switch to fallback server
-    await ServerConfigService.setSelectedServer(fallbackServer);
-    result = await this.registerDevice(deviceId, deviceName);
-    
-    if (result.success) {
-      return { ...result, serverUsed: fallbackServer };
+    // Try each fallback server
+    for (const fallbackServer of fallbackServers) {
+      await ServerConfigService.setSelectedServer(fallbackServer);
+      result = await this.registerDevice(deviceId, deviceName);
+      
+      if (result.success) {
+        return { ...result, serverUsed: fallbackServer };
+      }
     }
 
-    // Both servers failed - switch back to original
+    // All servers failed - switch back to original
     await ServerConfigService.setSelectedServer(currentServer);
     
     return {
       success: false,
-      message: 'Failed to connect to both Alpha and Beta servers. Please check your internet connection.',
+      message: 'Failed to connect to all servers. Please check your internet connection.',
     };
   }
 
@@ -468,24 +470,27 @@ export class SyncService {
       return { ...result, serverUsed: currentServer };
     }
 
-    // Current server failed, try the other one
+    // Current server failed, try other servers as fallback (dynamic based on API_SERVERS)
     const currentServer = await ServerConfigService.getSelectedServer();
-    const fallbackServer: ServerType = currentServer === 'ALPHA' ? 'BETA' : 'ALPHA';
+    const allServers: ServerType[] = Object.keys(API_SERVERS) as ServerType[];
+    const fallbackServers = allServers.filter(s => s !== currentServer);
     
-    // Switch to fallback server
-    await ServerConfigService.setSelectedServer(fallbackServer);
-    result = await this.downloadAndCacheData();
-    
-    if (result.success) {
-      return { ...result, serverUsed: fallbackServer };
+    // Try each fallback server
+    for (const fallbackServer of fallbackServers) {
+      await ServerConfigService.setSelectedServer(fallbackServer);
+      result = await this.downloadAndCacheData();
+      
+      if (result.success) {
+        return { ...result, serverUsed: fallbackServer };
+      }
     }
 
-    // Both servers failed - switch back to original
+    // All servers failed - switch back to original
     await ServerConfigService.setSelectedServer(currentServer);
     
     return {
       success: false,
-      message: 'Failed to connect to both Alpha and Beta servers. Please check your internet connection.',
+      message: 'Failed to connect to all servers. Please check your internet connection.',
     };
   }
 

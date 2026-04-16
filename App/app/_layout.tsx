@@ -19,6 +19,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="api-key-setup"
+            options={{
+              title: "API Key Setup",
+              gestureEnabled: false, // Prevent going back from setup
+            }}
+          />
+          <Stack.Screen
             name="device-setup"
             options={{
               title: "Device Setup",

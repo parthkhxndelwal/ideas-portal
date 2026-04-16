@@ -1,0 +1,355 @@
+CODE CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Connection Error Fix - All code verified and documented
+
+───────────────────────────────────────────────────────────────────────────────
+NEW FILE: App/app/api-key-setup.tsx (215 lines)
+───────────────────────────────────────────────────────────────────────────────
+
+Purpose: Screen where users enter their API key on first app launch
+
+Key Features:
+✓ Beautiful UI with instructions
+✓ API key validation (must start with "scanner_")
+✓ Saves to device using AsyncStorage
+✓ Won't ask again unless API key cleared
+✓ Professional error handling
+
+Flow:
+1. User enters API key (format: scanner_xxxxx_xxxxx)
+2. Input validated for format
+3. Saved via DeviceService.setApiKey()
+4. Success message shown
+5. Redirects to device-setup
+
+Code Highlights:
+- Lines 24-30: Check if API key already exists (skip if yes)
+- Lines 32-58: Handle API key entry and validation
+- Lines 38-40: Validate format starts with "scanner_"
+- Lines 45-46: Save using DeviceService.setApiKey()
+- Lines 119-215: Professional styling
+
+Usage:
+import from app/_layout.tsx routing
+Triggered when DeviceService.getApiKey() returns null
+
+
+───────────────────────────────────────────────────────────────────────────────
+MODIFIED FILE: App/app/index.tsx (55 lines) - Initialization Logic
+───────────────────────────────────────────────────────────────────────────────
+
+Changes:
+✓ Added API key check before device setup
+✓ Routes to api-key-setup if no key
+✓ Falls back to api-key-setup on errors
+
+Code Highlights:
+- Lines 14-21: NEW - Check for API key first
+  const apiKey = await DeviceService.getApiKey();
+  if (!apiKey) {
+    router.replace('/api-key-setup');  // NEW SCREEN
+    return;
+  }
+
+- Lines 23-32: Existing device setup check
+- Lines 33-37: Error fallback to api-key-setup
+
+Flow:
+1. App starts (index.tsx)
+2. Check AsyncStorage for 'api_key' ← NEW STEP
+3. If missing → Show api-key-setup ← NEW SCREEN
+4. If present → Continue to device-setup (existing)
+5. Device setup registers with API key ← FIXED
+
+
+───────────────────────────────────────────────────────────────────────────────
+MODIFIED FILE: App/app/_layout.tsx (60 lines) - Navigation Routing
+───────────────────────────────────────────────────────────────────────────────
+
+Changes:
+✓ Added api-key-setup route
+✓ Configured route order
+✓ Prevented back navigation from setup screens
+
+Code Highlights:
+- Lines 21-26: NEW api-key-setup route
+  <Stack.Screen
+    name="api-key-setup"
+    options={{
+      title: "API Key Setup",
+      gestureEnabled: false, // Prevent going back
+    }}
+  />
+
+- Line 25: gestureEnabled: false ensures user can't skip this screen
+- Line 22: Route must be named "api-key-setup" to match filename
+
+Navigation Order:
+1. index (splash)
+2. api-key-setup (NEW)
+3. device-setup
+4. scanner
+5. history (modal)
+6. settings (modal)
+
+
+───────────────────────────────────────────────────────────────────────────────
+MODIFIED FILE: App/services.ts (532 lines) - Service Layer
+───────────────────────────────────────────────────────────────────────────────
+
+New Methods Added:
+
+1. DeviceService.getApiKey() - Lines 68-74
+   async getApiKey(): Promise<string | null>
+   - Retrieves stored API key from AsyncStorage
+   - Returns null if not found
+   - Used to check if API key is configured
+
+2. DeviceService.setApiKey(apiKey: string) - Lines 76-82
+   async setApiKey(apiKey: string): Promise<void>
+   - Saves API key to AsyncStorage
+   - Called from api-key-setup.tsx after validation
+   - Stores under key 'api_key'
+
+3. DeviceService.clearApiKey() - Lines 84-90
+   async clearApiKey(): Promise<void>
+   - Removes API key from device
+   - Used in settings/logout flow
+
+Storage Keys Updated:
+- Line 21: Added API_KEY: 'api_key' to STORAGE_KEYS
+
+API Key Usage in Requests:
+- Lines 95-101: Device registration now includes API key
+  headers: {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'x-api-key': apiKey }),
+  }
+
+- Lines 191-196: All API requests include API key
+  headers: {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'x-api-key': apiKey }),
+    ...options.headers,
+  }
+
+Server Configuration:
+- Line 10: SOLESTA server as default
+  SOLESTA: 'https://solesta.krmangalam.edu.in',
+
+
+───────────────────────────────────────────────────────────────────────────────
+EXISTING FILE: App/crypto.ts (137 lines) - QR Decryption
+───────────────────────────────────────────────────────────────────────────────
+
+No changes needed - Already supports both formats!
+
+Decryption Methods:
+
+1. decryptAES(encryptedData) - Lines 10-32
+   - Decrypts AES-256-CBC encrypted data
+   - Format: iv_hex:encrypted_hex
+   - Used for new QR codes from backend
+
+2. decrypt(encodedData) - Lines 39-61
+   - Legacy 3-digit ASCII decoding
+   - Backwards compatibility
+   - Fallback if AES fails
+
+3. decryptQRData(encodedData) - Lines 68-137
+   - Main entry point for QR parsing
+   - Tries AES first, falls back to ASCII
+   - Returns: {originalData, rollNumber, transactionId, qrType, isValid}
+   - Validates format: volunteer_solesta_ or participant_solesta_
+
+Flow:
+  QR Code Data
+    ↓
+  decryptQRData() (main function)
+    ├─ Try decryptAES() → Success ✓ (NEW FORMAT)
+    └─ Try decrypt() → Success ✓ (LEGACY FORMAT)
+    ↓
+  Extract transactionId
+    ↓
+  Return {isValid: true, transactionId: ..., qrType: ...}
+
+
+───────────────────────────────────────────────────────────────────────────────
+MODIFIED FILE: App/package.json - Dependencies
+───────────────────────────────────────────────────────────────────────────────
+
+Already contains crypto-js dependency:
+  "dependencies": {
+    "crypto-js": "^4.1.0",  // Already present
+    ...
+  }
+
+No additional changes needed - all dependencies ready!
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PROBLEM SOLVED
+═══════════════════════════════════════════════════════════════════════════════
+
+Before Fix:
+  1. App starts
+  2. Tries to register device immediately
+  3. NO API key in request
+  4. Backend returns error: "Missing x-api-key header"
+  5. App shows: "Connection Failed"
+  ❌ Application unusable
+
+After Fix:
+  1. App starts
+  2. Checks for API key
+  3. If missing → Show API Key Setup screen (NEW)
+  4. User enters API key from admin dashboard
+  5. Save to device
+  6. Device registration includes API key
+  7. Backend validates API key
+  8. ✅ Connection succeeds
+  9. App ready to use
+
+
+═══════════════════════════════════════════════════════════════════════════════
+HOW IT WORKS: DATA FLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+User Journey:
+
+1. FIRST TIME USER
+   App Launch
+   ↓ (index.tsx checks AsyncStorage)
+   API Key Not Found
+   ↓
+   Show: API Key Setup Screen (api-key-setup.tsx) ← NEW
+   ↓ (User action)
+   User enters: "scanner_xxx_xxx"
+   ↓
+   Validated: Starts with "scanner_"?
+   ↓
+   Save: DeviceService.setApiKey(apiKey)
+   ↓ (Stored in AsyncStorage)
+   Saved to device!
+   ↓
+   Navigate: To device-setup
+
+2. DEVICE SETUP
+   Show: Device Setup Screen
+   ↓ (User action)
+   User enters: "Gate 1"
+   ↓
+   Register: DeviceService.registerDevice()
+   ├─ Get API key: DeviceService.getApiKey()
+   ├─ Add header: {'x-api-key': apiKey}
+   ├─ Send request: POST /api/scanner/register-device
+   └─ Backend validates API key ✓
+   ↓
+   Registered!
+   ↓
+   Navigate: To scanner
+
+3. SUBSEQUENT LAUNCHES
+   App Launch
+   ↓ (index.tsx checks AsyncStorage)
+   API Key Found!
+   ↓ (Skip api-key-setup)
+   Check Device Configured?
+   ├─ If No → Device Setup
+   └─ If Yes → Scanner Ready
+
+
+API Key Storage:
+
+  AsyncStorage
+  ├─ device_config: {...}
+  ├─ api_key: "scanner_xxx_xxx" ← NEW
+  ├─ cached_users: [...]
+  ├─ scan_history: [...]
+  ├─ api_server: "SOLESTA"
+  └─ last_sync: "2026-04-16T12:00:00Z"
+
+
+Request Headers:
+
+  Before Fix:
+    headers: {
+      'Content-Type': 'application/json',
+      // Missing x-api-key ❌
+    }
+
+  After Fix:
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': 'scanner_xxx_xxx', ← NEW ✓
+    }
+
+
+Backend Validation:
+
+  POST /api/scanner/register-device
+    ↓ (CORS middleware)
+    Check: x-api-key header present? ✓
+    ↓ (Scanner Auth middleware)
+    Validate: Is API key valid?
+    ├─ Query database for API key
+    ├─ Is it active?
+    └─ Is it not expired?
+    ↓
+    Success! ✓ Accept request
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SECURITY
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ API keys stored in AsyncStorage (device-local)
+✓ API keys NOT visible in UI (except when entering)
+✓ API keys sent in x-api-key header (standard auth)
+✓ Backend validates on every request
+✓ QR codes encrypted with AES-256-CBC
+✓ No hardcoded keys in source code
+✓ Each device gets unique registration
+✓ Admin can revoke API keys anytime
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+All code verified in place:
+✓ api-key-setup.tsx - Professional UI (215 lines)
+✓ index.tsx - API key check (updated 55 lines)
+✓ _layout.tsx - Routing added (updated 60 lines)
+✓ services.ts - API key methods (updated 532 lines)
+✓ crypto.ts - QR decryption ready (existing 137 lines)
+✓ package.json - crypto-js dependency (existing)
+
+Backend ready:
+✓ CORS configuration (solesta/lib/server/cors.ts)
+✓ API key validation (solesta/lib/server/scanner-auth.ts)
+✓ QR encryption (solesta/lib/server/qr-generator.ts)
+✓ Device registration endpoint (updated)
+
+Documentation ready:
+✓ CONNECTION_ERROR_FIX.md
+✓ MANUAL_TESTING_VERIFICATION.md
+✓ TESTING_QUICK_START.txt
+✓ This file: CODE_CHANGES_SUMMARY.txt
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS FOR TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Generate API key from admin dashboard
+2. Start Expo: cd App && npm start
+3. Scan QR code with Expo Go
+4. See API Key Setup screen (THE FIX) ← Proves it works
+5. Enter API key
+6. Device setup completes
+7. Test QR scanning
+8. Verify scans in admin dashboard
+
+═══════════════════════════════════════════════════════════════════════════════

@@ -25,6 +25,11 @@ export interface MobileUser {
   year?: string;
   selectedSubEvent?: string;
   role?: string;
+  isKrmu?: boolean;
+  isFresher?: boolean;
+  scanned?: boolean;
+  scannedAt?: string | null;
+  scannedBy?: string | null;
 }
 
 // Scan Record Types

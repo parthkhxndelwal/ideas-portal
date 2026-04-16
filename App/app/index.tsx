@@ -12,6 +12,14 @@ export default function Index() {
 
   const initializeApp = async () => {
     try {
+      // First check if API key is configured
+      const apiKey = await DeviceService.getApiKey();
+      if (!apiKey) {
+        // No API key, need to setup first
+        router.replace('/api-key-setup');
+        return;
+      }
+
       // Check if device is configured
       const config = await DeviceService.getDeviceConfig();
 
@@ -24,8 +32,8 @@ export default function Index() {
       }
     } catch (error) {
       console.error('Error initializing app:', error);
-      // On error, go to device setup as fallback
-      router.replace('/device-setup');
+      // On error, go to API key setup as fallback
+      router.replace('/api-key-setup');
     }
   };
 

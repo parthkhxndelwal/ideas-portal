@@ -56,15 +56,15 @@ export default function DeviceSetupScreen() {
         return;
       }
 
-      // Registration successful - save config and proceed
-      await DeviceService.saveDeviceConfig(config);
-      
-      const serverName = registrationResult.serverUsed === 'ALPHA' ? 'Alpha' : 'Beta';
-      Alert.alert(
-        'Success',
-        `Device registered successfully on ${serverName} server!`,
-        [{ text: 'Continue', onPress: () => router.replace('/scanner') }]
-      );
+       // Registration successful - save config and proceed
+       await DeviceService.saveDeviceConfig(config);
+       
+       const serverName = registrationResult.serverUsed === 'ALPHA' ? 'Alpha' : registrationResult.serverUsed === 'BETA' ? 'Beta' : 'Solesta';
+       Alert.alert(
+         'Success',
+         `Device registered successfully on ${serverName} server!`,
+         [{ text: 'Continue', onPress: () => router.replace('/scanner') }]
+       );
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {

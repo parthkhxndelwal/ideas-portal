@@ -1,0 +1,400 @@
+═══════════════════════════════════════════════════════════════════════════════
+  HOW TO GENERATE A SCANNER API KEY
+═══════════════════════════════════════════════════════════════════════════════
+
+Quick Answer:
+  1. Go to: https://solesta.krmangalam.edu.in/admin
+  2. Log in with admin credentials
+  3. Find "Scanner Settings" or "API Keys" section
+  4. Click "Generate API Key"
+  5. Enter a name (e.g., "Gate 1", "Registration Desk")
+  6. Copy the generated key (format: scanner_xxxxx_xxxxx)
+  7. Share with device users or enter in app
+
+───────────────────────────────────────────────────────────────────────────────
+DETAILED STEPS
+───────────────────────────────────────────────────────────────────────────────
+
+Step 1: Access Admin Dashboard
+  URL: https://solesta.krmangalam.edu.in/admin
+  - Opens the admin portal
+  - Requires admin login
+
+Step 2: Log In
+  - Username: Your admin username
+  - Password: Your admin password
+  - Click "Login"
+
+Step 3: Navigate to Scanner Settings
+  - Find "Scanner Settings" in the admin menu
+  - OR find "API Keys" section
+  - This takes you to the API key management page
+
+Step 4: Generate New API Key
+  - Click "Generate API Key" button
+  - A form appears asking for:
+    • Name (required): Name for this key
+      Examples: "Gate 1", "Entrance", "Registration Desk", "Volunteer Desk"
+  - Click "Generate" or "Create"
+
+Step 5: Copy the Generated Key
+  - New key appears (format: scanner_xxxxxxxx_xxxxxxxxxxxx)
+  - Click "Copy" button or manually copy the key
+  - KEEP THIS KEY SAFE - Don't share unnecessarily
+
+Step 6: Provide to Device Users
+  - Share the key with users who need to set up devices
+  - Users enter this key in the app's "API Key Setup" screen
+  - Key stays on the device - won't ask again
+
+───────────────────────────────────────────────────────────────────────────────
+API KEY FORMAT & STRUCTURE
+───────────────────────────────────────────────────────────────────────────────
+
+Format:
+  scanner_[timestamp]_[random_string]
+
+Example:
+  scanner_1713272400000_abc123def456
+
+Components:
+  • Prefix: "scanner_" (always starts with this)
+  • Timestamp: Unix timestamp when key was generated
+  • Random: Random alphanumeric string for uniqueness
+
+Length: ~35-40 characters total
+
+Validation:
+  • Must start with "scanner_"
+  • Must not be empty
+  • Must be unique (can't duplicate)
+  • Database checks this automatically
+
+───────────────────────────────────────────────────────────────────────────────
+DATABASE SCHEMA (For Reference)
+───────────────────────────────────────────────────────────────────────────────
+
+Table: api_keys (in MongoDB)
+
+Field Details:
+  • id: Unique MongoDB ID (auto-generated)
+  • key: The actual API key (scanner_xxxxx_xxxxx)
+  • name: Human-readable name (e.g., "Gate 1")
+  • isActive: Boolean (true = can be used, false = revoked)
+  • createdAt: When the key was generated
+  • lastUsedAt: When the key was last used (for auditing)
+
+Query Example (for admins):
+  db.api_keys.find()
+  └─ Shows all API keys with usage info
+
+───────────────────────────────────────────────────────────────────────────────
+BACKEND CODE (For Reference)
+───────────────────────────────────────────────────────────────────────────────
+
+Generation Function: solesta/lib/server/scanner-auth.ts:44-61
+
+export async function generateScannerApiKey(name: string): Promise<string> {
+  try {
+    const key = `scanner_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+    
+    await prisma.apiKey.create({
+      data: {
+        key,
+        name,
+        isActive: true,
+      },
+    })
+
+    return key
+  } catch (error) {
+    console.error("Error generating API key:", error)
+    throw error
+  }
+}
+
+Admin API Endpoint: solesta/app/api/admin/scanner/api-keys/route.ts:30-52
+
+POST /api/admin/scanner/api-keys
+  Request Body:
+  {
+    "name": "Gate 1",
+    "action": "generate"
+  }
+
+  Response:
+  {
+    "success": true,
+    "message": "API key generated successfully",
+    "apiKey": "scanner_1713272400000_abc123",
+    "name": "Gate 1"
+  }
+
+───────────────────────────────────────────────────────────────────────────────
+API KEY MANAGEMENT
+───────────────────────────────────────────────────────────────────────────────
+
+List All API Keys:
+  • Admin Dashboard → Scanner Settings → View API Keys
+  • Shows: Name, Active Status, Created Date, Last Used Date
+  • Use this to track which keys are in use
+
+Deactivate API Key:
+  • If a device is compromised or lost
+  • Click "Deactivate" next to the key
+  • Key can no longer be used for requests
+  • Devices using that key will fail (error: "Inactive API key")
+  • Cannot be reactivated (generate new key instead)
+
+View Usage:
+  • "Last Used At" timestamp shows when key was used
+  • Useful for auditing and tracking device activity
+  • Updated every time the key is used
+
+Generate New Key:
+  • Always generate a new key instead of reusing old ones
+  • Each device/gate should have its own key
+  • Makes it easy to disable specific devices
+
+───────────────────────────────────────────────────────────────────────────────
+SECURITY NOTES
+───────────────────────────────────────────────────────────────────────────────
+
+✓ API Key Security:
+  • Keys are stored in database (not in code)
+  • Keys are sent over HTTPS only
+  • Should never be hardcoded in source
+  • Should never be committed to git
+
+✓ Master Key:
+  • There's a SCANNER_MASTER_KEY in environment
+  • Used for setup/testing only
+  • Should not be given to regular users
+  • Available via: process.env.SCANNER_MASTER_KEY
+
+✓ Key Validation:
+  • Every request checks if key is valid and active
+  • Invalid/inactive keys are rejected
+  • Failures logged for auditing
+  • Timestamps tracked (lastUsedAt)
+
+✓ Deactivation:
+  • Compromised keys can be deactivated immediately
+  • Old keys should be deactivated after expiry
+  • No way to recover old keys (by design)
+  • Generate new key for continued access
+
+───────────────────────────────────────────────────────────────────────────────
+HOW TO USE THE API KEY (In Mobile App)
+───────────────────────────────────────────────────────────────────────────────
+
+First Time Setup:
+
+  1. User opens app
+  2. App shows "API Key Setup" screen (NEW)
+  3. User enters API key from admin (format: scanner_xxxxx)
+  4. App validates and saves to device
+  5. Device proceeds to device setup
+
+Device Registration:
+
+  1. App automatically includes API key in request header
+  2. Backend receives request with: x-api-key: scanner_xxxxx
+  3. Backend validates key (checks if active in database)
+  4. Device registration succeeds if key is valid
+  5. Device can now scan QR codes
+
+All Subsequent Requests:
+
+  1. App retrieves saved API key from local storage
+  2. Includes in every API request header
+  3. Backend validates key for each request
+  4. Request accepted/rejected based on key validity
+
+Error Cases:
+
+  • Missing API Key: "API key required"
+  • Invalid API Key: "Invalid API key format"
+  • Inactive API Key: "API key is not active"
+  • Never Used Key: "API key not found"
+  • Solution: Generate new key, restart app
+
+───────────────────────────────────────────────────────────────────────────────
+TROUBLESHOOTING
+───────────────────────────────────────────────────────────────────────────────
+
+Problem: "Connection Failed" error
+  ├─ Cause: Device registration includes no/invalid API key
+  ├─ Solution 1: Check API key entered correctly
+  ├─ Solution 2: Verify key format: scanner_xxxxx_xxxxx
+  ├─ Solution 3: Verify key is active in admin dashboard
+  └─ Solution 4: Generate new key and try again
+
+Problem: "API key not found" error
+  ├─ Cause: API key was never generated or deleted
+  ├─ Solution: Admin generates new key in dashboard
+  └─ Share new key with device user
+
+Problem: "API key is not active" error
+  ├─ Cause: Key was deactivated by admin
+  ├─ Solution 1: Check if device should have access
+  ├─ Solution 2: Admin reactivates key (new one only)
+  └─ Solution 3: Generate new key and use that
+
+Problem: Device can't sync scans
+  ├─ Cause: API key expired or changed
+  ├─ Possible: Key deactivated while in use
+  └─ Solution: Ask admin for new API key
+
+───────────────────────────────────────────────────────────────────────────────
+EXAMPLE WORKFLOW
+───────────────────────────────────────────────────────────────────────────────
+
+Scenario: Setting up 3 gate scanning devices
+
+Step 1: Admin generates 3 API keys
+  ├─ Key 1: scanner_1713272400000_gate1 (name: "Main Gate")
+  ├─ Key 2: scanner_1713272405000_gate2 (name: "Side Gate")
+  └─ Key 3: scanner_1713272410000_gate3 (name: "Back Gate")
+
+Step 2: Admin sends keys to device operators
+  ├─ Gate 1 operator: scanner_1713272400000_gate1
+  ├─ Gate 2 operator: scanner_1713272405000_gate2
+  └─ Gate 3 operator: scanner_1713272410000_gate3
+
+Step 3: Each operator opens app and enters their key
+  ├─ App validates key
+  ├─ Key saved to device
+  └─ Can't ask for key again
+
+Step 4: Devices start scanning
+  ├─ Each scan includes device API key
+  ├─ Backend validates and records scan
+  ├─ Admin sees scans grouped by device
+  └─ Admin can track which gate each scan came from
+
+Step 5: Later, if needed to disable a gate
+  ├─ Admin deactivates that gate's API key
+  ├─ That device will fail on next request
+  ├─ Error: "API key is not active"
+  └─ Device operator contacts admin for new key
+
+───────────────────────────────────────────────────────────────────────────────
+ADMIN API ENDPOINTS (For Developers)
+───────────────────────────────────────────────────────────────────────────────
+
+Generate New API Key:
+  POST /api/admin/scanner/api-keys
+  
+  Request:
+    {
+      "action": "generate",
+      "name": "Main Gate"
+    }
+  
+  Response:
+    {
+      "success": true,
+      "message": "API key generated successfully",
+      "apiKey": "scanner_1713272400000_abc123def",
+      "name": "Main Gate"
+    }
+
+List All API Keys:
+  GET /api/admin/scanner/api-keys
+  
+  Response:
+    {
+      "success": true,
+      "keys": [
+        {
+          "id": "507f1f77bcf86cd799439011",
+          "name": "Main Gate",
+          "isActive": true,
+          "createdAt": "2026-04-16T12:00:00Z",
+          "lastUsedAt": "2026-04-16T14:30:00Z"
+        },
+        ...
+      ]
+    }
+
+Deactivate API Key:
+  POST /api/admin/scanner/api-keys
+  
+  Request:
+    {
+      "action": "deactivate",
+      "keyId": "507f1f77bcf86cd799439011"
+    }
+  
+  Response:
+    {
+      "success": true,
+      "message": "API key deactivated successfully"
+    }
+
+───────────────────────────────────────────────────────────────────────────────
+QUICK REFERENCE
+───────────────────────────────────────────────────────────────────────────────
+
+Generate API Key:
+  1. https://solesta.krmangalam.edu.in/admin
+  2. Log in
+  3. Scanner Settings → Generate API Key
+  4. Enter name (e.g., "Gate 1")
+  5. Click Generate
+  6. Copy key (format: scanner_xxxxx_xxxxx)
+
+Use API Key:
+  • Mobile app: Enter in "API Key Setup" screen
+  • Backend: Sent as x-api-key header
+  • Format: scanner_[timestamp]_[random]
+  • Required: Yes (must be provided)
+  • Validation: Backend checks every request
+
+Manage API Keys:
+  • List: Admin Dashboard → Scanner Settings
+  • Deactivate: Click "Deactivate" next to key
+  • Track: View "Last Used At" timestamp
+  • Security: Each device gets own key
+
+Troubleshoot:
+  • Check key format: scanner_xxxxx
+  • Verify key is active in admin dashboard
+  • Check API key in app settings
+  • Generate new key if needed
+  • Restart app after entering new key
+
+───────────────────────────────────────────────────────────────────────────────
+ENVIRONMENT VARIABLE (For Developers)
+───────────────────────────────────────────────────────────────────────────────
+
+Development/Setup Master Key:
+
+  Environment: .env.local
+  Variable: SCANNER_MASTER_KEY
+  
+  Usage: Can be used instead of database keys for setup
+  Format: Any string (e.g., "dev_master_key_123")
+  Security: For development only, never in production
+  
+  Code:
+    const masterKey = process.env.SCANNER_MASTER_KEY
+    if (masterKey && apiKey === masterKey) {
+      // Accept this master key
+    }
+
+═══════════════════════════════════════════════════════════════════════════════
+                    READY TO GENERATE YOUR API KEY!
+═══════════════════════════════════════════════════════════════════════════════
+
+Next Steps:
+1. Go to: https://solesta.krmangalam.edu.in/admin
+2. Log in with admin credentials
+3. Find Scanner Settings or API Keys
+4. Click "Generate API Key"
+5. Enter device name (e.g., "Gate 1")
+6. Copy the generated key
+7. Give to device user or enter in mobile app
+
+═══════════════════════════════════════════════════════════════════════════════

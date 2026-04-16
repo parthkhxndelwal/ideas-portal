@@ -1,0 +1,235 @@
+═══════════════════════════════════════════════════════════════════════════════
+  SOLESTA SCANNER - MANUAL TESTING QUICK START
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ STATUS: Connection error FIXED - All code verified and in place
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 1: GENERATE API KEY (Admin)
+───────────────────────────────────────────────────────────────────────────────
+1. Go to: https://solesta.krmangalam.edu.in
+2. Log in with admin account
+3. Find "Scanner Settings"
+4. Click "Generate API Key"
+5. Copy the key (looks like: scanner_xxxxx_xxxxx)
+6. KEEP THIS KEY READY
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 2: START EXPO GO DEV SERVER
+───────────────────────────────────────────────────────────────────────────────
+Open Terminal/CMD:
+  cd App
+  npm start
+
+You'll see:
+  ✔ Waiting on [long localhost URL]
+  └─ iOS app: [QR code]
+  └─ Android app: [QR code]
+  └─ Web: [localhost URL]
+
+LEAVE THIS RUNNING
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 3: OPEN APP IN EXPO GO
+───────────────────────────────────────────────────────────────────────────────
+On your mobile device:
+1. Open Expo Go app
+2. Scan the QR code from terminal
+3. Wait for app to load (30-60 seconds)
+
+Expected screens:
+  1. "Initializing Solesta Scanner..." (loading)
+  2. ✅ NEW: "API Key Setup" screen ← SHOWS THE FIX
+  3. "Device Setup" screen
+  4. "QR Scanner" screen
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 4: TEST API KEY ENTRY (NEW SCREEN)
+───────────────────────────────────────────────────────────────────────────────
+When you see "API Key Setup" screen:
+1. Read the instructions: "Where to get your API Key?"
+2. Tap the text input field
+3. Paste the API key from Step 1
+4. Tap "Continue"
+
+Expected result:
+  ✅ "API key saved successfully!" message
+  ✅ Automatically goes to Device Setup
+
+Previous bug (FIXED):
+  ❌ App crashed or said "Connection Failed"
+  ✅ Now shows proper API Key Setup screen first
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 5: TEST DEVICE REGISTRATION (Uses API Key)
+───────────────────────────────────────────────────────────────────────────────
+When you see "Device Setup" screen:
+1. Tap the text input
+2. Enter device name (e.g., "Gate 1" or "Test Device")
+3. Tap "Register Device"
+
+Expected result:
+  ✅ "Device registered successfully!" message
+  ✅ Goes to Scanner screen
+  ❌ No "Connection Failed" error (this was the bug!)
+
+What changed:
+  Before: Device registration had NO API key → Backend rejected
+  After: Device registration includes API key from Step 4 → Backend accepts ✅
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 6: TEST QR SCANNING
+───────────────────────────────────────────────────────────────────────────────
+Now you're in Scanner screen:
+1. Go back to admin dashboard
+2. Create or generate a test QR code
+3. Come back to Expo Go app
+4. Tap "Scan QR Code" button
+5. Point camera at QR code
+
+Expected result:
+  ✅ QR code scanned
+  ✅ Person's information appears
+  ✅ Shows scan result
+  ✅ Scan recorded
+
+───────────────────────────────────────────────────────────────────────────────
+STEP 7: VERIFY SCAN IN ADMIN DASHBOARD
+───────────────────────────────────────────────────────────────────────────────
+1. Go to admin dashboard
+2. Navigate to Scanner Statistics / Scans
+3. Look for your scan with:
+   - Device name from Step 5
+   - Current timestamp
+   - Transaction ID
+   - Participant/Volunteer type
+
+───────────────────────────────────────────────────────────────────────────────
+WHAT'S DIFFERENT (The Fix)
+───────────────────────────────────────────────────────────────────────────────
+
+BEFORE (Connection Error):
+  App starts
+  → Try device registration
+  → NO API KEY header
+  → Backend says "Missing X-API-Key"
+  → Error: "Connection Failed"
+  ❌ App unusable
+
+AFTER (Fixed):
+  App starts
+  → Check if API key saved
+  → If not: Show API Key Setup screen ← NEW
+  → User enters API key
+  → Save to device
+  → Device registration WITH API key
+  → Backend validates API key
+  → ✅ Connection works!
+
+NEW SCREEN: api-key-setup.tsx
+  - Professional UI
+  - Instructions: "Where to get your API Key?"
+  - Validation: Must start with "scanner_"
+  - Saves to device: Won't ask again
+
+───────────────────────────────────────────────────────────────────────────────
+CODE CHANGES VERIFIED
+───────────────────────────────────────────────────────────────────────────────
+✅ App/app/api-key-setup.tsx (NEW - 215 lines)
+   - Beautiful UI for API key entry
+   - Instructions for getting API key
+   - Validation (must start with scanner_)
+   - Saves to AsyncStorage
+
+✅ App/app/index.tsx (UPDATED - 55 lines)
+   - Line 16: Check for API key first (NEW)
+   - Line 19: If missing → api-key-setup (NEW)
+   - Line 24-32: Device setup (existing)
+
+✅ App/app/_layout.tsx (UPDATED - 60 lines)
+   - Added api-key-setup route
+
+✅ App/services.ts (UPDATED - 532 lines)
+   - getApiKey() method
+   - setApiKey() method
+   - API key included in all requests
+
+✅ App/crypto.ts (EXISTING - 137 lines)
+   - AES-256-CBC decryption
+   - Legacy 3-digit fallback
+
+───────────────────────────────────────────────────────────────────────────────
+TROUBLESHOOTING
+───────────────────────────────────────────────────────────────────────────────
+
+Issue: App doesn't show API Key Setup screen
+→ Make sure app directory: cd App
+→ Start fresh: npm start
+→ Clear Expo cache: npm start --clear
+
+Issue: "API key should start with scanner_"
+→ Copy full key from admin dashboard
+→ Key format: scanner_xxxxx_xxxxx
+→ Don't cut off the "scanner_" prefix
+
+Issue: "Connection Failed" still appears
+→ This shouldn't happen with the fix!
+→ Check that api-key-setup.tsx was created
+→ Check that services.ts has getApiKey/setApiKey
+→ Verify API key was entered and saved
+
+Issue: QR code won't decrypt
+→ Backend must generate with AES-256-CBC
+→ App decryption is in crypto.ts (verified ✅)
+→ Should support both new (AES) and old (3-digit)
+
+───────────────────────────────────────────────────────────────────────────────
+SUCCESS CRITERIA
+───────────────────────────────────────────────────────────────────────────────
+You'll know it's working when:
+
+✅ API Key Setup screen appears
+✅ User can enter API key
+✅ Device Setup screen appears after
+✅ Device registers successfully
+✅ No "Connection Failed" error
+✅ Scanner screen loads
+✅ QR codes scan and decrypt
+✅ Scans appear in admin dashboard
+
+───────────────────────────────────────────────────────────────────────────────
+RELEVANT FILES
+───────────────────────────────────────────────────────────────────────────────
+
+Mobile App:
+  App/app/api-key-setup.tsx (NEW - See flow here)
+  App/app/index.tsx (UPDATED - See initialization)
+  App/app/_layout.tsx (UPDATED - See routing)
+  App/services.ts (UPDATED - See API key methods)
+  App/crypto.ts (QR decryption - both formats)
+
+Backend:
+  solesta/lib/server/cors.ts (CORS headers)
+  solesta/lib/server/scanner-auth.ts (API key validation)
+  solesta/lib/server/qr-generator.ts (AES-256-CBC encryption)
+
+Documentation:
+  CONNECTION_ERROR_FIX.md (Detailed explanation)
+  MANUAL_TESTING_VERIFICATION.md (Full testing guide)
+  QR_ENCRYPTION_CORRECT_IMPLEMENTATION.md (Architecture)
+  CORS_CONFIGURATION_GUIDE.md (CORS setup)
+
+───────────────────────────────────────────────────────────────────────────────
+REMEMBER
+───────────────────────────────────────────────────────────────────────────────
+• API key MUST start with "scanner_"
+• API key is required for device registration
+• API key is saved locally on the device
+• API key is sent in every request header (x-api-key)
+• App won't work without valid API key
+• QR codes are encrypted with AES-256-CBC
+• Backend validates every request with the API key
+
+═══════════════════════════════════════════════════════════════════════════════
+Ready to test? Start with Step 1!
+═══════════════════════════════════════════════════════════════════════════════

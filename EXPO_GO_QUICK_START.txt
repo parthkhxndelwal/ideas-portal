@@ -1,0 +1,130 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                   EXPO GO - READY TO TEST                                  ║
+║                   API URL CONFIGURED                                       ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+✅ API URL: https://solesta.krmangalam.edu.in
+✅ Configuration: Default server set to SOLESTA
+✅ Status: Ready for immediate testing
+
+════════════════════════════════════════════════════════════════════════════════
+
+📋 QUICK START (5 MINUTES)
+
+1. VERIFY BACKEND IS RUNNING
+   ┌─────────────────────────────────────────┐
+   │ curl -I https://solesta.krmangalam.edu.in/api/scanner/users \
+   │   -H "X-API-Key: test"                  │
+   │ Should return 401 (invalid key)         │
+   └─────────────────────────────────────────┘
+
+2. GENERATE API KEY
+   ┌─────────────────────────────────────────┐
+   │ 1. Go to admin dashboard                │
+   │ 2. Scanner Settings → Generate API Key  │
+   │ 3. Copy the full key                    │
+   └─────────────────────────────────────────┘
+
+3. START EXPO GO
+   ┌─────────────────────────────────────────┐
+   │ cd App                                  │
+   │ npm start                               │
+   │ (or: expo start)                        │
+   └─────────────────────────────────────────┘
+
+4. OPEN IN EXPO GO
+   ┌─────────────────────────────────────────┐
+   │ Android: Expo Go app → Scan QR code    │
+   │ iOS: Camera app → Scan → Open Expo Go  │
+   └─────────────────────────────────────────┘
+
+5. AUTHENTICATE
+   ┌─────────────────────────────────────────┐
+   │ Enter API key from step 2               │
+   │ App registers device                    │
+   │ Ready to scan!                          │
+   └─────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 TESTING
+
+Scan a QR code generated from the backend:
+
+Expected Flow:
+  1. App opens camera
+  2. Scan QR code
+  3. App decrypts QR (AES-256-CBC)
+  4. Sends to backend with API key
+  5. Backend records scan
+  6. Shows "Scan Successful" ✅
+
+════════════════════════════════════════════════════════════════════════════════
+
+🔧 CONFIGURATION DETAILS
+
+Backend Server:   https://solesta.krmangalam.edu.in
+Authentication:   X-API-Key header
+Encryption:       AES-256-CBC
+CORS:             Enabled for mobile apps
+
+Default Server:   SOLESTA (already set)
+API URL Storage:  AsyncStorage (persisted locally)
+
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️ TROUBLESHOOTING
+
+Can't connect to backend?
+  → Verify backend is running: curl https://solesta.krmangalam.edu.in
+  → Check network connectivity
+  → Verify firewall allows HTTPS
+
+Invalid API key?
+  → Generate new key in admin dashboard
+  → Copy full key (no spaces)
+  → Verify key is active
+
+QR code won't scan?
+  → Check QR code is generated with new backend (AES encryption)
+  → Try different lighting
+  → Check app console for errors
+
+════════════════════════════════════════════════════════════════════════════════
+
+✅ WHAT WAS CHANGED
+
+File: App/services.ts
+
+Before:
+  export const API_SERVERS = {
+    ALPHA: 'https://ideas.parth.engineer',
+    BETA: 'https://icloudems.tech',
+  }
+  return (server as ServerType) || 'ALPHA';
+
+After:
+  export const API_SERVERS = {
+    ALPHA: 'https://ideas.parth.engineer',
+    BETA: 'https://icloudems.tech',
+    SOLESTA: 'https://solesta.krmangalam.edu.in',  ← NEW
+  }
+  return (server as ServerType) || 'SOLESTA';  ← NEW DEFAULT
+
+════════════════════════════════════════════════════════════════════════════════
+
+🚀 YOU'RE READY!
+
+Just:
+1. Make sure backend is deployed and running
+2. Generate API key
+3. Run: npm start (in App directory)
+4. Scan QR code in Expo Go
+5. Enter API key
+6. Test scanning
+
+That's it! 🎉
+
+════════════════════════════════════════════════════════════════════════════════
