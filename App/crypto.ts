@@ -1,3 +1,36 @@
+import CryptoJS from 'crypto-js'
+
+const AES_ENCRYPTION_KEY = 'SOLESTA26SECRETKEY2026XXXX'
+
+/**
+ * Decrypt AES-256-CBC encrypted data
+ * @param encryptedData - The encrypted data in format "iv_hex:encrypted_hex"
+ * @returns Decrypted original text
+ */
+export function decryptAES(encryptedData: string): string {
+  try {
+    const parts = encryptedData.split(':')
+    if (parts.length !== 2) {
+      throw new Error('Invalid AES encrypted data format')
+    }
+
+    const iv = CryptoJS.enc.Hex.parse(parts[0])
+    const encrypted = parts[1]
+    const key = CryptoJS.enc.Utf8.parse(AES_ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32))
+
+    const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    })
+
+    return decrypted.toString(CryptoJS.enc.Utf8)
+  } catch (error) {
+    console.error('AES decryption error:', error)
+    throw new Error('Failed to decrypt AES data')
+  }
+}
+
 /**
  * Decodes text that was encoded with the encrypt function
  * @param encodedData - The encoded string with 3-digit padded values
@@ -29,7 +62,7 @@ export function decrypt(encodedData: string): string {
 
 /**
  * Decodes QR data specifically for Solesta
- * @param encodedData - The encoded QR data
+ * @param encodedData - The encoded QR data (either AES-encrypted or 3-digit ASCII)
  * @returns Object containing the decoded data and identifiers
  */
 export function decryptQRData(encodedData: string): {
@@ -40,7 +73,26 @@ export function decryptQRData(encodedData: string): {
   isValid: boolean
 } {
   try {
-    const decrypted = decrypt(encodedData)
+    let decrypted: string | null = null
+
+    // First, try AES-256-CBC decryption (new format)
+    try {
+      decrypted = decryptAES(encodedData)
+    } catch (aesError) {
+      // If AES fails, try 3-digit ASCII (legacy format)
+      try {
+        decrypted = decrypt(encodedData)
+      } catch (asciiError) {
+        console.warn('Both AES and ASCII decryption failed')
+        return {
+          originalData: '',
+          rollNumber: null,
+          transactionId: null,
+          qrType: "unknown",
+          isValid: false
+        }
+      }
+    }
 
     // Validate the format
     if (decrypted.startsWith('volunteer_solesta_')) {

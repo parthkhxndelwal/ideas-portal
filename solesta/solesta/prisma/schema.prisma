@@ -58,42 +58,46 @@ model Otp {
 }
 
 model Registration {
-  id                    String        @id @default(auto()) @map("_id") @db.ObjectId
-  referenceId          String        @unique @map("reference_id")
-  userId               String        @unique @map("user_id") @db.ObjectId
-  telegramId           String?
-  externalAppId        String?       @map("external_app_id")
-  
-  name                 String
-  email                 String
-  rollNumber           String?       @map("roll_number")
-  college              String?
-  course               String
-  year                 String
-  isKrmu               Boolean       @map("is_krmu")
-  isFresher            Boolean?      @default(false) @map("is_fresher")
-  
-  feeAmount            Int           @map("fee_amount")
-  feePaid              Boolean       @default(false) @map("fee_paid")
-  paymentDate         DateTime?     @map("payment_date")
-  
-  qrCode              String?       @map("qr_code")
-  qrSentTelegram     Boolean       @default(false) @map("qr_sent_telegram")
-  qrSentEmail        Boolean       @default(false) @map("qr_sent_email")
-  telegramRetryCount Int           @default(0) @map("telegram_retry_count")
-  emailRetryCount    Int           @default(0) @map("email_retry_count")
-  lastTelegramAttempt DateTime?    @map("last_telegram_attempt")
-  lastEmailAttempt   DateTime?    @map("last_email_attempt")
-  
-  ticketSentAt        DateTime?     @map("ticket_sent_at")
-  manualRegistration  Boolean       @default(false) @map("manual_registration")
-  
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+   id                    String        @id @default(auto()) @map("_id") @db.ObjectId
+   referenceId          String        @unique @map("reference_id")
+   userId               String        @unique @map("user_id") @db.ObjectId
+   telegramId           String?
+   externalAppId        String?       @map("external_app_id")
+   
+   name                 String
+   email                 String
+   rollNumber           String?       @map("roll_number")
+   college              String?
+   course               String
+   year                 String
+   isKrmu               Boolean       @map("is_krmu")
+   isFresher            Boolean?      @default(false) @map("is_fresher")
+   
+   feeAmount            Int           @map("fee_amount")
+   feePaid              Boolean       @default(false) @map("fee_paid")
+   paymentDate         DateTime?     @map("payment_date")
+   
+   qrCode              String?       @map("qr_code")
+   qrSentTelegram     Boolean       @default(false) @map("qr_sent_telegram")
+   qrSentEmail        Boolean       @default(false) @map("qr_sent_email")
+   telegramRetryCount Int           @default(0) @map("telegram_retry_count")
+   emailRetryCount    Int           @default(0) @map("email_retry_count")
+   lastTelegramAttempt DateTime?    @map("last_telegram_attempt")
+   lastEmailAttempt   DateTime?    @map("last_email_attempt")
+   
+   ticketSentAt        DateTime?     @map("ticket_sent_at")
+   manualRegistration  Boolean       @default(false) @map("manual_registration")
+   
+   scanned              Boolean       @default(false) @map("scanned")
+   scannedAt            DateTime?     @map("scanned_at")
+   scannedBy            String?       @map("scanned_by")
+   
+   createdAt           DateTime      @default(now())
+   updatedAt           DateTime      @updatedAt
 
-  user                 User          @relation(fields: [userId], references: [id])
+   user                 User          @relation(fields: [userId], references: [id])
 
-  @@map("registrations")
+   @@map("registrations")
 }
 
 enum LogLevel {

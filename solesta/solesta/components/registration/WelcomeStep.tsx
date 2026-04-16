@@ -25,10 +25,18 @@ export function WelcomeStep({ onProceed }: WelcomeStepProps) {
           </p>
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <Button onClick={onProceed} className="flex-1">
-            Book Now
-          </Button>
+        <div className="rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800">
+          <p className="font-semibold mb-2">Registrations Closed</p>
+          <p>
+            On-the-spot registration will be provided at the venue.
+          </p>
+          <ul className="mt-2 space-y-1 list-disc pl-5">
+            <li>Internal: ₹500</li>
+            <li>External: ₹700</li>
+          </ul>
+          <p className="mt-2">
+            Contact Helpdesk at the venue for more information.
+          </p>
         </div>
 
         <div className="pt-2 text-center">

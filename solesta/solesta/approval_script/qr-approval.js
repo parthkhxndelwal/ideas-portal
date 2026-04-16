@@ -129,7 +129,7 @@ async function runTestEmail() {
 }
 
 /**
- * Validate record before processing
+ * Validate record before processing (without email resolution to avoid duplicate work)
  */
 async function validateRecord(record, dbRegistration) {
   const errors = []
@@ -144,7 +144,7 @@ async function validateRecord(record, dbRegistration) {
     errors.push("Name is empty")
   }
 
-  // Validate email
+  // Validate email (just basic format check, full resolution happens during processing)
   const emailResolution = await resolveEmail(
     record,
     dbRegistration,
@@ -182,43 +182,96 @@ async function validateRecord(record, dbRegistration) {
 }
 
 /**
- * Process single record
+ * Collect records for validation phase
  */
-async function processRecord(record, index, total, isFirstRecord) {
-  const progress = `[${index + 1}/${total}]`
-  const statusPrefix = `${progress} ${record.referenceId} (${normalizeName(record.name)})`
+async function collectAndValidateAllRecords(records) {
+  console.log(`\n[VALIDATION PHASE]`)
+  const validated = {
+    valid: [],
+    failed: [],
+    skipped: [],
+  }
 
-  try {
-    // Step 1: Validate and resolve reference ID
-    console.log(`\n${statusPrefix}...`)
-    const refValidation = await validateAndResolveRefId(record.referenceId)
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i]
+    const progress = `[${i + 1}/${records.length}]`
 
-    if (!refValidation.success) {
-      await logError(record, refValidation.error, refValidation.message)
-      processingStatus.failed++
-      console.log(`  ✗ ${refValidation.message}`)
-      return
-    }
+    try {
+      // Validate and resolve reference ID
+      const refValidation = await validateAndResolveRefId(record.referenceId)
 
-    const dbRegistration = refValidation.registration
-
-    // Step 2: Validate record
-    const validation = await validateRecord(record, dbRegistration)
-
-    if (!validation.valid) {
-      if (validation.skip) {
-        processingStatus.skipped++
-        console.log(`  ⊘ Skipped (already processed with QR)`)
-        return
+      if (!refValidation.success) {
+        await logError(record, refValidation.error, refValidation.message)
+        validated.failed.push({
+          record,
+          reason: refValidation.error,
+          message: refValidation.message,
+        })
+        continue
       }
 
-      await logError(record, validation.reason, validation.errors.join("; "))
-      processingStatus.failed++
-      console.log(`  ✗ Validation failed: ${validation.errors.join(", ")}`)
-      return
-    }
+      const dbRegistration = refValidation.registration
 
-    // Step 3: Resolve email
+      // Validate record
+      const validation = await validateRecord(record, dbRegistration)
+
+      if (!validation.valid) {
+        if (validation.skip) {
+          validated.skipped.push(record)
+        } else {
+          await logError(
+            record,
+            validation.reason,
+            validation.errors.join("; ")
+          )
+          validated.failed.push({
+            record,
+            reason: validation.reason,
+            errors: validation.errors,
+          })
+        }
+        continue
+      }
+
+      // Record is valid, store ref validation result for later use
+      validated.valid.push({
+        record,
+        refValidation,
+      })
+    } catch (error) {
+      await logError(record, "VALIDATION_ERROR", error.message)
+      validated.failed.push({
+        record,
+        reason: "VALIDATION_ERROR",
+        message: error.message,
+      })
+    }
+  }
+
+  console.log(`✓ Validation complete`)
+  console.log(`  • Valid: ${validated.valid.length}`)
+  console.log(`  • Failed: ${validated.failed.length}`)
+  console.log(`  • Skipped: ${validated.skipped.length}`)
+
+  processingStatus.failed += validated.failed.length
+  processingStatus.skipped += validated.skipped.length
+
+  return validated
+}
+
+/**
+ * Process single record (after validation phase - only handling QR generation and sending)
+ */
+async function processRecord(validatedRecord, index, total) {
+  const { record, refValidation } = validatedRecord
+  const progress = `[${index + 1}/${total}]`
+  const statusPrefix = `${progress} ${record.referenceId} (${normalizeName(record.name)})`
+  const dbRegistration = refValidation.registration
+
+  try {
+    console.log(`\n${statusPrefix}...`)
+
+    // Resolve email
     const emailResolution = await resolveEmail(
       record,
       dbRegistration,
@@ -234,16 +287,7 @@ async function processRecord(record, index, total, isFirstRecord) {
     const finalEmail = emailResolution.email
     console.log(`  Email: ${finalEmail} (from ${emailResolution.source})`)
 
-    // Step 4: Test email if first record
-    if (isFirstRecord) {
-      const testEmailSuccess = await runTestEmail()
-      if (!testEmailSuccess) {
-        console.log("\n✗ Aborting due to test email failure")
-        throw new Error("Test email phase failed")
-      }
-    }
-
-    // Step 5: Generate QR code
+    // Generate QR code
     let qrResult
     try {
       qrResult = await generateQRForRegistration(
@@ -258,7 +302,7 @@ async function processRecord(record, index, total, isFirstRecord) {
       return
     }
 
-    // Step 6: Update database with QR
+    // Update database with QR
     try {
       await prisma.registration.update({
         where: { referenceId: refValidation.referenceId },
@@ -273,7 +317,7 @@ async function processRecord(record, index, total, isFirstRecord) {
       return
     }
 
-    // Step 7: Send email with fallback
+    // Send email with fallback
     let emailResult = await sendQREmail(
       finalEmail,
       normalizeName(record.name),
@@ -300,7 +344,7 @@ async function processRecord(record, index, total, isFirstRecord) {
     }
 
     if (!emailResult.success) {
-      // Option A: Skip invalid emails and mark for manual review
+      // Mark for manual review
       await logError(
         record,
         "EMAIL_SEND_FAILED",
@@ -312,7 +356,7 @@ async function processRecord(record, index, total, isFirstRecord) {
       return
     }
 
-    // Step 8: Mark as processed in database
+    // Mark as processed in database
     try {
       await prisma.registration.update({
         where: { referenceId: refValidation.referenceId },
@@ -327,7 +371,7 @@ async function processRecord(record, index, total, isFirstRecord) {
       console.warn(`  ⚠ Failed to mark as processed: ${error.message}`)
     }
 
-    // Step 9: Clean up any previous errors for this reference ID
+    // Clean up any previous errors for this reference ID
     await deleteErrorsForRefId(refValidation.referenceId)
 
     processingStatus.successful++
@@ -337,6 +381,40 @@ async function processRecord(record, index, total, isFirstRecord) {
     await logError(record, "UNEXPECTED_ERROR", error.message)
     processingStatus.failed++
   }
+}
+
+/**
+ * Display manual review summary and next steps
+ */
+async function displayManualReviewSummary(loggingPaths) {
+  console.log("\n[MANUAL REVIEW REQUIRED]")
+  console.log("════════════════════════════════════════════════════════════")
+
+  if (processingStatus.failed > 0) {
+    console.log(
+      `\n⚠  ${processingStatus.failed} records require manual attention:\n`
+    )
+
+    console.log(`📋 Review the following for manual intervention:`)
+    console.log(`   ${loggingPaths.errorsCsv}`)
+
+    console.log(`\n📝 Common issues and solutions:`)
+    console.log(`   • EMAIL_SEND_FAILED: Update email address in database`)
+    console.log(
+      `   • VALIDATION_FAILED: Check fee & roll number against payment`
+    )
+    console.log(`   • QR_GEN_FAILED: Technical issue - check logs for details`)
+    console.log(`   • MISSING_EMAIL: Add email address in database`)
+
+    console.log(`\n🔄 After fixing issues, you can:`)
+    console.log(`   1. Update the database with corrected information`)
+    console.log(`   2. Re-run this script to process corrected records`)
+    console.log(
+      `   3. OR use resend-qr.js to manually send QRs to specific users`
+    )
+  }
+
+  console.log("\n════════════════════════════════════════════════════════════")
 }
 
 /**
@@ -378,22 +456,47 @@ async function main() {
       `  • Internal: ${csvData.internalRecords.length} (Fee: ${formatCurrency(config.feeKrmu)})`
     )
 
-    // Process all records
-    console.log("\n[BATCH PROCESSING]")
-    let isFirstRecord = true
+    // PHASE 1: Test email BEFORE batch processing
+    console.log("\n[TEST EMAIL PHASE]")
+    console.log(`Sending test QR to: ${config.testEmailAddress}`)
+    const testResult = await sendTestEmail(config.testEmailAddress)
 
-    for (let i = 0; i < csvData.allRecords.length; i++) {
-      const record = csvData.allRecords[i]
+    if (!testResult.success) {
+      console.log(`✗ Test email failed: ${testResult.error}`)
+      console.log("⚠ Cannot proceed with batch processing")
+      throw new Error("Test email phase failed")
+    }
+
+    console.log("✓ Test email sent successfully")
+    const confirmed = await waitForTestConfirmation(config.testEmailAddress)
+    if (!confirmed) {
+      console.log("⚠ Test email not confirmed by user")
+      throw new Error("Test email not confirmed - aborting")
+    }
+
+    // PHASE 2: Validate all records
+    const validatedRecords = await collectAndValidateAllRecords(
+      csvData.allRecords
+    )
+
+    if (validatedRecords.valid.length === 0) {
+      console.log(
+        "\n⚠ No valid records to process. Check errors log for details."
+      )
+      await displayManualReviewSummary(loggingPaths)
+      return
+    }
+
+    // PHASE 3: Process valid records (generate QR + send emails)
+    console.log("\n[BATCH PROCESSING]")
+    for (let i = 0; i < validatedRecords.valid.length; i++) {
+      const validatedRecord = validatedRecords.valid[i]
 
       try {
-        await processRecord(record, i, csvData.allRecords.length, isFirstRecord)
-        isFirstRecord = false
+        await processRecord(validatedRecord, i, validatedRecords.valid.length)
       } catch (error) {
-        if (error.message === "Test email phase failed") {
-          console.log("\nAborting batch processing due to test email failure")
-          throw error
-        }
         // Continue with other records
+        console.error(`  ✗ Failed to process: ${error.message}`)
       }
     }
 
@@ -407,6 +510,11 @@ async function main() {
     console.log("════════════════════════════════════════════════════════════")
 
     await logSummary(processingStatus)
+
+    // PHASE 4: Display manual review items (if any)
+    if (processingStatus.failed > 0) {
+      await displayManualReviewSummary(loggingPaths)
+    }
 
     console.log(`\n✓ Processing complete!`)
     console.log(`\nError Log: ${loggingPaths.errorsCsv}`)

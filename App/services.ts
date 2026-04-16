@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   SCAN_HISTORY: 'scan_history',
   LAST_SYNC: 'last_sync',
   API_SERVER: 'api_server',
+  API_KEY: 'api_key',
 };
 
 // Server Configuration Service
@@ -63,13 +64,40 @@ export class DeviceService {
     }
   }
 
+  static async getApiKey(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(STORAGE_KEYS.API_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  static async setApiKey(apiKey: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async clearApiKey(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.API_KEY);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async registerDevice(deviceId: string, deviceName: string): Promise<{ success: boolean; message: string; device?: any }> {
     try {
       const apiBaseUrl = await ServerConfigService.getApiBaseUrl();
+      const apiKey = await this.getApiKey();
+      
       const response = await fetch(`${apiBaseUrl}/api/scanner/register-device`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiKey && { 'x-api-key': apiKey }),
         },
         body: JSON.stringify({
           deviceId,
@@ -156,10 +184,12 @@ export class ApiService {
     try {
       const apiBaseUrl = await ServerConfigService.getApiBaseUrl();
       const url = `${apiBaseUrl}${endpoint}`;
+      const apiKey = await DeviceService.getApiKey();
 
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
+          ...(apiKey && { 'x-api-key': apiKey }),
           ...options.headers,
         },
         ...options,
