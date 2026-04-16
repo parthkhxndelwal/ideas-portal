@@ -90,7 +90,7 @@ export default function LandingPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Mr & Mrs Fresher
+                Mr. & Ms. Fresher
               </a>
             </Button>
             <Button
