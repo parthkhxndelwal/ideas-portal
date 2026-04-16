@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       try {
         // Create registration link
         const token = uuidv4()
-        const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 hours
+        const expiresAt = new Date(Date.now() + 150 * 60 * 60 * 1000) // 150 hours
 
         await prisma.registrationLink.create({
           data: {

@@ -25,7 +25,7 @@ export async function sendTicketLinkEmail(
     <div style="background: #F3F4F6; padding: 20px; margin: 20px 0; border-radius: 8px;">
       <p style="margin: 0 0 15px 0;"><strong>Reference ID:</strong> ${referenceId}</p>
       <a href="${ticketLink}" style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Download QR Ticket</a>
-      <p style="color: #6B7280; font-size: 12px; margin: 15px 0 0 0;">This link expires in 72 hours</p>
+      <p style="color: #6B7280; font-size: 12px; margin: 15px 0 0 0;">This link expires in 150 hours</p>
     </div>
     
     <p>If you can't click the button above, copy this link:</p>
@@ -38,15 +38,22 @@ export async function sendTicketLinkEmail(
   </div>`
 
   try {
+    console.log("Attempting to send ticket link email to:", email)
     await transporter.sendMail({
       from: `"Solesta '26" <${config.smtpUser}>`,
       to: email,
       subject: "Solesta '26 - Your Registration & QR Ticket",
       html,
     })
+    console.log("✓ Ticket link email sent to:", email)
     return true
   } catch (error) {
-    console.error("Failed to send ticket link email:", error)
+    console.error(
+      "✗ Failed to send ticket link email to:",
+      email,
+      "Error:",
+      error
+    )
     return false
   }
 }
@@ -67,7 +74,7 @@ export async function sendUpdateEmailNotification(
     <div style="background: #F3F4F6; padding: 20px; margin: 20px 0; border-radius: 8px;">
       <p style="margin: 0 0 15px 0;"><strong>Reference ID:</strong> ${referenceId}</p>
       <a href="${ticketLink}" style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Download QR Ticket</a>
-      <p style="color: #6B7280; font-size: 12px; margin: 15px 0 0 0;">This link expires in 72 hours</p>
+      <p style="color: #6B7280; font-size: 12px; margin: 15px 0 0 0;">This link expires in 150 hours</p>
     </div>
     
     <p>If you didn't request this change, please contact us immediately.</p>
@@ -77,15 +84,22 @@ export async function sendUpdateEmailNotification(
   </div>`
 
   try {
+    console.log("Attempting to send update email notification to:", newEmail)
     await transporter.sendMail({
       from: `"Solesta '26" <${config.smtpUser}>`,
       to: newEmail,
       subject: "Solesta '26 - Email Updated & New QR Ticket Link",
       html,
     })
+    console.log("✓ Update email notification sent to:", newEmail)
     return true
   } catch (error) {
-    console.error("Failed to send email update notification:", error)
+    console.error(
+      "✗ Failed to send update email notification to:",
+      newEmail,
+      "Error:",
+      error
+    )
     return false
   }
 }

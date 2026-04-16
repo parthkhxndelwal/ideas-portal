@@ -33,11 +33,10 @@ export async function POST(
       )
     }
 
-    // Check if a link already exists and is unused
+    // Check if a link already exists and hasn't expired
     const existingLink = await prisma.registrationLink.findFirst({
       where: {
         registrationId: id,
-        isUsed: false,
         expiresAt: { gt: new Date() },
       },
     })
@@ -46,7 +45,7 @@ export async function POST(
     if (!existingLink) {
       // Create new registration link
       const token = uuidv4()
-      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 hours
+      const expiresAt = new Date(Date.now() + 150 * 60 * 60 * 1000) // 150 hours
 
       link = await prisma.registrationLink.create({
         data: {
@@ -84,6 +83,12 @@ export async function POST(
     )
 
     if (!emailSent) {
+      console.error(
+        "Email send failed for registration:",
+        id,
+        "email:",
+        registration.email
+      )
       return NextResponse.json(
         { error: "Failed to send ticket email" },
         { status: 500 }

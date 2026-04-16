@@ -27,30 +27,22 @@ export async function POST(
       )
     }
 
-    // Get existing link to check if it's been used
+    // Get existing link to revoke it
     const existingLink = await prisma.registrationLink.findFirst({
       where: { registrationId: id },
       orderBy: { createdAt: "desc" },
     })
 
-    if (existingLink?.isUsed) {
-      return NextResponse.json(
-        { error: "Cannot resend ticket. Previous link has been used." },
-        { status: 400 }
-      )
-    }
-
-    // Revoke old link
+    // Revoke old link by deleting it
     if (existingLink) {
-      await prisma.registrationLink.update({
+      await prisma.registrationLink.delete({
         where: { id: existingLink.id },
-        data: { isUsed: true, usedAt: new Date() },
       })
     }
 
     // Create new link
     const token = uuidv4()
-    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 hours
+    const expiresAt = new Date(Date.now() + 150 * 60 * 60 * 1000) // 150 hours
 
     const newLink = await prisma.registrationLink.create({
       data: {
@@ -82,6 +74,12 @@ export async function POST(
     )
 
     if (!emailSent) {
+      console.error(
+        "Email send failed for resend-ticket:",
+        id,
+        "email:",
+        newEmail || registration.email
+      )
       return NextResponse.json(
         { error: "Failed to send email" },
         { status: 500 }

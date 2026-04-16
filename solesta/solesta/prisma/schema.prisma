@@ -155,8 +155,6 @@ model RegistrationLink {
   registrationId  String    @map("registration_id") @db.ObjectId
   token           String    @unique
   expiresAt       DateTime  @map("expires_at")
-  isUsed          Boolean   @default(false) @map("is_used")
-  usedAt          DateTime? @map("used_at")
   email           String
   createdAt       DateTime  @default(now())
 

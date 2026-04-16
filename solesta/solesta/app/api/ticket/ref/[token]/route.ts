@@ -29,14 +29,6 @@ export async function GET(
       )
     }
 
-    // Check if link has been used
-    if (link.isUsed) {
-      return NextResponse.json(
-        { error: "Ticket link has already been used" },
-        { status: 410 }
-      )
-    }
-
     // Get registration
     const registration = await prisma.registration.findUnique({
       where: { id: link.registrationId },
@@ -54,15 +46,6 @@ export async function GET(
       registration.referenceId,
       registration.rollNumber || ""
     )
-
-    // Mark link as used
-    await prisma.registrationLink.update({
-      where: { id: link.id },
-      data: {
-        isUsed: true,
-        usedAt: new Date(),
-      },
-    })
 
     return NextResponse.json({
       success: true,
