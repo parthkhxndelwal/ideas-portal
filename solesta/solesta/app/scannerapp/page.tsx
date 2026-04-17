@@ -53,8 +53,9 @@ export default function ScannerPage() {
 
     try {
       // First validate the QR code by fetching registration details
+      // Use POST instead of GET to avoid URL encoding issues with colons in encrypted data
       const validateResponse = await fetch(
-        `/api/scanner/validate/${transactionId}`,
+        `/api/scanner/validate/${encodeURIComponent(transactionId)}`,
         {
           method: "GET",
           headers: {

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/server/prisma"
 import { validateScannerApiKey } from "@/lib/server/scanner-auth"
 import { withCors } from "@/lib/server/cors"
+import { decryptQR } from "@/lib/server/qr-generator"
 
 export async function POST(request: NextRequest) {
   return withCors(request, async () => {
     // Validate API key
     const apiKey = request.headers.get("x-api-key")
-    if (!apiKey || !await validateScannerApiKey(apiKey)) {
+    if (!apiKey || !(await validateScannerApiKey(apiKey))) {
       return NextResponse.json(
         { error: "Unauthorized: Invalid or missing API key" },
         { status: 401 }
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
+    let {
       transactionId, // referenceId from the mobile app
       rollNumber,
       name,
@@ -27,9 +28,32 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!transactionId || !name || !qrType || !deviceId || !deviceName) {
       return NextResponse.json(
-        { error: "Missing required fields: transactionId, name, qrType, deviceId, deviceName" },
+        {
+          error:
+            "Missing required fields: transactionId, name, qrType, deviceId, deviceName",
+        },
         { status: 400 }
       )
+    }
+
+    // Try to decrypt if the transactionId looks like encrypted data (contains colons)
+    if (transactionId.includes(":")) {
+      try {
+        const decrypted = decryptQR(transactionId)
+        // Extract reference ID from decrypted format: "participant_solesta_REF_ID"
+        if (decrypted.includes("participant_solesta_")) {
+          transactionId = decrypted.replace("participant_solesta_", "")
+        } else if (decrypted.includes("volunteer_solesta_")) {
+          // For volunteers, we still use the decrypted value but will look up by rollNumber
+          transactionId = decrypted.replace("volunteer_solesta_", "")
+        } else {
+          // Fallback if format is different, use decrypted directly
+          transactionId = decrypted
+        }
+      } catch (decryptErr) {
+        console.warn("Failed to decrypt QR data, using as-is:", decryptErr)
+        // If decryption fails, continue with original transactionId
+      }
     }
 
     // Find registration by referenceId (transactionId)
