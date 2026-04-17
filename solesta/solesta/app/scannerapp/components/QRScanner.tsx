@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library"
 import { AlertCircle, Loader2 } from "lucide-react"
 
@@ -14,58 +14,106 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
   const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
+  const scanActiveRef = useRef(false)
+
+  const handleScan = useCallback(
+    (text: string) => {
+      if (scanActiveRef.current) {
+        scanActiveRef.current = false
+        onScan(text)
+      }
+    },
+    [onScan]
+  )
 
   useEffect(() => {
-    const startScanning = async () => {
+    let isMounted = true
+    scanActiveRef.current = true
+
+    const initCamera = async () => {
       try {
-        if (!videoRef.current) {
-          setError("Video element not found")
+        // Wait for DOM to be ready
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        if (!isMounted || !videoRef.current) {
+          if (isMounted) {
+            setError("Camera element not ready")
+          }
           return
         }
 
         const codeReader = new BrowserMultiFormatReader()
         codeReaderRef.current = codeReader
 
-        const devices = await codeReader.listVideoInputDevices()
+        // Try to get devices - this will prompt for permissions
+        let devices = await codeReader.listVideoInputDevices()
+
         if (devices.length === 0) {
-          setError("No camera devices found")
-          setIsInitializing(false)
-          return
+          // Retry once more in case permission was just granted
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          devices = await codeReader.listVideoInputDevices()
+
+          if (devices.length === 0) {
+            if (isMounted) {
+              setError("No camera devices found. Please check your device.")
+            }
+            return
+          }
         }
+
+        if (!isMounted) return
 
         const selectedDeviceId = devices[0].deviceId
 
-        await codeReader.decodeFromVideoDevice(
-          selectedDeviceId,
-          videoRef.current,
-          (result, err) => {
-            if (result) {
-              onScan(result.getText())
+        try {
+          await codeReader.decodeFromVideoDevice(
+            selectedDeviceId,
+            videoRef.current,
+            (result, err) => {
+              if (result && isMounted) {
+                handleScan(result.getText())
+              }
+              if (err && !(err instanceof NotFoundException)) {
+                console.debug("Scanning error:", err.message)
+              }
             }
-            if (err && !(err instanceof NotFoundException)) {
-              console.error("Scanning error:", err)
-            }
-          }
-        )
+          )
 
-        setIsInitializing(false)
+          if (isMounted) {
+            setIsInitializing(false)
+            setError(null)
+          }
+        } catch (decodeErr) {
+          if (isMounted) {
+            const msg =
+              decodeErr instanceof Error
+                ? decodeErr.message
+                : "Failed to start camera"
+            setError(msg)
+            setIsInitializing(false)
+          }
+        }
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to initialize camera"
-        setError(errorMessage)
-        setIsInitializing(false)
-        if (onError) onError(err as Error)
+        if (isMounted) {
+          const errorMessage =
+            err instanceof Error ? err.message : "Failed to initialize camera"
+          setError(errorMessage)
+          setIsInitializing(false)
+          if (onError) onError(err as Error)
+        }
       }
     }
 
-    startScanning()
+    initCamera()
 
     return () => {
+      isMounted = false
+      scanActiveRef.current = false
       if (codeReaderRef.current) {
         codeReaderRef.current.reset()
       }
     }
-  }, [onScan, onError])
+  }, [handleScan, onError])
 
   if (error) {
     return (
@@ -101,7 +149,9 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         className="aspect-square w-full object-cover"
+        style={{ display: "block" }}
       />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <svg

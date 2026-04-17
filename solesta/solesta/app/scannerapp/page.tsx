@@ -220,6 +220,9 @@ export default function ScannerPage() {
                 <Camera className="mr-2 h-5 w-5" />
                 Camera Scanner
               </h2>
+              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                Allow camera access when prompted by your browser
+              </p>
             </div>
 
             <div className="mb-4">
