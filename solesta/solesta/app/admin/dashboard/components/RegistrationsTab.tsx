@@ -356,6 +356,8 @@ export function RegistrationsTab() {
       email: "",
       course: "",
       year: "",
+      college: "",
+      studentType: "krmu",
     })
     setShowCreateDialog(true)
   }
