@@ -1,6 +1,7 @@
 import CryptoJS from 'crypto-js'
 
-const AES_ENCRYPTION_KEY = 'SOLESTA26SECRETKEY2026XXXX'
+// Use QR_GENERATION_KEY from environment, fallback to default
+const AES_ENCRYPTION_KEY = process.env.EXPO_PUBLIC_QR_GENERATION_KEY || 'SOLESTA26SECRETKEY2026XXXX'
 
 /**
  * Decrypt AES-256-CBC encrypted data
@@ -124,14 +125,29 @@ export function decryptQRData(encodedData: string): {
         qrType: "participant",
         isValid: Boolean(transactionId)
       }
-    } else {
-      return {
-        originalData: decrypted,
-        rollNumber: null,
-        transactionId: null,
-        qrType: "unknown",
-        isValid: false
+    } else if (decrypted.includes(':')) {
+      // Approval script format: referenceId:rollNumber:referenceId
+      const parts = decrypted.split(':')
+      if (parts.length === 3) {
+        const referenceId = parts[0]
+        const rollNumber = parts[1]
+
+        return {
+          originalData: decrypted,
+          rollNumber: rollNumber || null,
+          transactionId: referenceId, // Use referenceId as transactionId
+          qrType: "participant",
+          isValid: Boolean(referenceId)
+        }
       }
+    }
+
+    return {
+      originalData: decrypted,
+      rollNumber: null,
+      transactionId: null,
+      qrType: "unknown",
+      isValid: false
     }
   } catch (_error) {
     return {

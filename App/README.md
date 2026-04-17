@@ -132,11 +132,25 @@ Records a new scan entry.
 
 ## QR Code Format
 
-The app expects QR codes in the format:
+The app supports multiple QR code formats:
+
+### 1. New Standard Format (Bot Generated)
 ```
-participant_ideas3.0_TRANSACTIONID
-volunteer_ideas3.0_TRANSACTIONID
+participant_solesta_${transactionId}
+volunteer_solesta_${transactionId}
 ```
+Encrypted using AES-256-CBC with the QR_GENERATION_KEY
+
+### 2. Approval Script Format (Payment Verification)
+```
+referenceId:rollNumber:referenceId
+```
+Encrypted using AES-256-CBC with the QR_GENERATION_KEY
+
+### 3. Legacy Format (Backward Compatibility)
+3-digit ASCII encoded data (older implementation)
+
+All encrypted formats use the same **QR_GENERATION_KEY** from environment variables.
 
 ## Data Flow
 
